@@ -1,4 +1,4 @@
-# Master's Thesis
+# Master Thesis - Multi-Objective X-Armed Bandits
 
 The multi-objective X-armed bandit problem is a relatively new area of interest in the field of Artificial Intelligence. The field searches for algorithms that find solutions to multi-objective optimization problems that are susceptible to noise. The solution space to search in is a topological space, with an infinite set of arms to play, and due to the problems being multi-objective there is not one single optimal solution, but a set of optimal solutions. These problems occur a lot in our everyday lives, with a high interest for solutions in the fields of engineering, and finance.
 
