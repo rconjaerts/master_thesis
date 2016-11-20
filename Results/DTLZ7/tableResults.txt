@@ -1,0 +1,47 @@
+ZDT2
+Algorithm & $IGD(sol_{ND},PF)$ (St dev) & $Cardinality$ & computational time (in ms) \\ \hline
+NSGA-II & 2.728 (0.0584) & 5.01 & 429.9\\
+MOEA/D & 1.3938 (0.0208) & 2.52 & 97.8199\\
+MO-SOO-PD & 0.4211 (0.0062) & 10.86 & 1644.51\\
+N-MO-SOOS & 1.1007 (0.0305) & 14.72 & 129.78\\
+I-MO-SOOS & 0.459 (0.0) & 10.0 & 3295.07
+
+ZDT3
+Algorithm & $IGD(sol_{ND},PF)$ (St dev) & $Cardinality$ & computational time (in ms) \\ \hline
+NSGA-II & 1.3498 (0.1255) & 13.3 & 410.39\\
+MOEA/D & 0.581 (0.0073) & 21.57 & 111.97\\
+MO-SOO-PD & 0.4848 (0.0158) & 7.75 & 2030.86\\
+N-MO-SOOS & 1.4932 (0.0254) & 14.41 & 113.7\\
+I-MO-SOOS & 0.5388 (0.0) & 9.0 & 2076.42
+
+ZDT4
+Algorithm & $IGD(sol_{ND},PF)$ (St dev) & $Cardinality$ & computational time (in ms) \\ \hline
+NSGA-II & 44.6402 (160.991) & 10.63 & 405.56\\
+MOEA/D & 33.9177 (139.1093) & 79.48 & 126.33\\
+MO-SOO-PD & 0.0046 (0.0) & 285.17 & 1095.45\\
+N-MO-SOOS & 1.3676 (0.0316) & 14.63 & 115.47\\
+I-MO-SOOS & 0.0045 (0.0) & 81.0 & 2202.6
+
+ZDT6
+Algorithm & $IGD(sol_{ND},PF)$ (St dev) & $Cardinality$ & computational time (in ms) \\ \hline
+NSGA-II & 5.5871 (0.139) & 9.21 & 470.85\\
+MOEA/D & 3.1636 (0.0626) & 10.94 & 104.0699\\
+MO-SOO-PD & 0.3685 (0.0035) & 34.93 & 1051.6\\
+N-MO-SOOS & 1.1131 (0.0329) & 14.84 & 115.64\\
+I-MO-SOOS & 0.4851 (0.0) & 302.02 & 1806.39
+
+DTLZ1
+Algorithm & $IGD(sol_{ND},PF)$ (St dev) & $Cardinality$ & computational time (in ms) \\ \hline
+NSGA-II & 59.5493 (714.9938) & 31.16 & 336.7\\
+MOEA/D & 53.6748 (416.5787) & 303.52 & 279.43\\
+MO-SOO-PD & 0.3214 (0.0) & 272.98 & 1363.3\\
+N-MO-SOOS & 1.5188 (0.0086) & 6.87 & 140.44\\
+I-MO-SOOS & 0.3115 (0.0) & 59.0 & 5995.86
+
+DTLZ7
+Algorithm & $IGD(sol_{ND},PF)$ (St dev) & $Cardinality$ & computational time (in ms) \\ \hline
+NSGA-II & 1.9119 (0.3064) & 1.48 & 356.4\\
+MOEA/D & 1.8352 (0.1392) & 2254.52 & 1042.02\\
+MO-SOO-PD & 2.5254 (0.0589) & 88.19 & 863.84\\
+N-MO-SOOS & 1.1698 (0.0102) & 7.0 & 121.63\\
+I-MO-SOOS & 2.799 (0.0) & 2.0 & 18365.41

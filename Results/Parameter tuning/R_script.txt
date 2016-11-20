@@ -1,0 +1,25 @@
+Algorithms <- c("PF", "NSGA-II", "MOEA-D", "MO-SOO-PD", "N-MO-SOOS", "I-MO-SOOS"); 
+
+# Data collection and aggregation
+dta = data.frame()
+for(a in Algorithms){
+	data1 = read.csv(paste(a, ".csv", sep=""),header=TRUE)
+    data1$Algorithm = a
+    dta = rbind(dta, data1)
+}
+dta$Algorithm = factor(dta$Algorithm, levels=Algorithms)
+
+p <- ggplot(aes_string(x="f1.x.", y="f2.x.", color="Algorithm"), data=dta) + geom_point() + ggtitle("Performance Algorithms on ZDT2 Problem") +  xlab("function objective f1(x)") + ylab("function objective f2(x)")
+
+
+Ts <- c("dtlz1_pf"); 
+
+# Data collection and aggregation
+dta = data.frame()
+for(a in Ts){
+	data1 = read.csv(paste(a, ".csv", sep=""),header=TRUE)
+    dta = rbind(dta, data1)
+}
+
+
+p <- ggplot(aes_string(x="f1.x.", y="f2.x."), data=dta) + geom_point(colour="#0072B2") + ggtitle("Pareto front ZDT6") + xlim(0, 1) + ylim(0, 1) + xlab("function objective f1(x)") + ylab("function objective f2(x)")

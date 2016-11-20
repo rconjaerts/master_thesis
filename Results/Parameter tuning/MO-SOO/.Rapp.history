@@ -1,0 +1,4346 @@
+#!/usr/bin/env Rscript#
+#
+# Number of Runs of the Experiment.#
+R = 1000#
+#
+# Sample Size.#
+N = 100#
+#
+# X part of set of samples.#
+Xs = NA#
+#
+# Y part of set of samples.#
+Ys = NA#
+#
+# Weight Vector of Random Target Function.#
+wf = NA#
+#
+# Final Hypothesis.#
+g = NA; wg = NA#
+#
+##
+# Fraction of IN-SAMPLE Mismatches#
+# g(x) != y per Experiment.#
+##
+Ein = NA#
+#
+##
+# Fraction of OUT-OF-SAMPLE Mismatches#
+# g(x) != f(x) per Experiment.#
+##
+Eout = NA#
+#
+random_x = function (void) {#
+    x = runif(2, -1, 1)#
+}#
+#
+proper = function (x) {#
+    append(1, x)#
+}#
+#
+random_f = function () {#
+    a = random_x()#
+    b = random_x()#
+    wf[1] <<- (a[1] * b[2]) - (b[1] * a[2])#
+    wf[2] <<- a[2] - b[2]#
+    wf[3] <<- b[1] - a[1]#
+#
+    function (x) { sign(t(wf) %*% proper(x)) }#
+}#
+#
+getX = function () {#
+    X = vector()#
+    for (i in 1:N) {#
+        X = c(X, proper(unlist(Xs[i])))#
+    }#
+    X = matrix(X, nrow=N, ncol=3, byrow=TRUE)#
+}#
+#
+getY = function () {#
+    Y = vector()#
+    for (i in 1:N) {#
+        Y = c(Y, unlist(Ys[i]))#
+    }#
+    Y = matrix(Y, nrow=N, ncol=1, byrow=TRUE)#
+}#
+#
+minw = function (X, Y) {#
+    Xdagger = solve(t(X) %*% X) %*% t(X)#
+    w = Xdagger %*% Y#
+    w = c(w)#
+}#
+#
+create_h = function (w) {#
+    function (x) { sign(t(w) %*% proper(x)) }#
+}#
+#
+ein = function () {#
+    mismatchN = 0#
+#
+    for (i in 1:N) {#
+        x = unlist(Xs[i])#
+        y = unlist(Ys[i])    #
+        if (g(x) != y) {#
+            mismatchN = mismatchN + 1#
+        } #
+    }#
+#
+    avg = mismatchN / N#
+}#
+#
+eout = function () {#
+    T = 1000; mismatchN = 0#
+#
+    for (i in 1:T) {#
+        x = random_x()#
+        if (g(x) != f(x)) {#
+            mismatchN = mismatchN + 1#
+        }#
+    }#
+#
+    avg = mismatchN / T#
+}#
+#
+for (i in 1:R) {#
+    f   = random_f()#
+    Xs  = lapply(1:N, random_x)#
+    Ys  = lapply(Xs, f)#
+#
+    X   = getX()#
+    Y   = getY()#
+    wg  = minw(X, Y)#
+    g   = create_h(wg)#
+#
+    Ein[i]  = ein()#
+    Eout[i] = eout()#
+}#
+#
+print("Linear Regression Classification")#
+print(paste("Sample Size     = ", N))#
+print(paste("Number of Runs  = ", R))#
+print(paste("Mean Ein        = ", mean(Ein)))#
+print(paste("Mean Eout       = ", mean(Eout)))#
+#
+paint = function () {#
+    name = "linear_regression.png"#
+    png(name)#
+#
+    plot(0, 0, type="n", xlab="x1", ylab="x2",#
+         main="Linear Regression Classification")#
+#
+    ch = 16; color = 3#
+#
+    for (i in 1:N) {#
+        x = unlist(Xs[i])#
+        y = unlist(Ys[i])#
+        points(x[1], x[2], pch=(ch + y), col=(color + g(x)))#
+    }#
+#
+    wgcolor = "black"; wfcolor = "dark green"#
+    wglty   = 1      ; wflty   = 2#
+#
+    abline(a=(-wf[1]/wf[3]), b = (-wf[2]/wf[3]),#
+           col=wfcolor, lty=wflty, lwd=1)#
+#
+    abline(a=(-wg[1]/wg[3]), b = (-wg[2]/wg[3]),#
+           col=wgcolor, lty=wglty)#
+#
+    legend("topright", c("f(x)", "g(x)"),#
+           col=c(wfcolor, wgcolor),#
+           lty=c(wflty, wglty))#
+#
+    dev.off()#
+    browseURL(name)#
+}#
+#
+# Paint the results of the last Experiment.#
+paint()
+;
+.
+Ein
+x <- 0;
+for (i in 1:R) { x <- x + Ein[i]}
+x
+x <- x/1000;
+x - 0
+x - 0.001
+x- 0.01
+x = runif(2, -1, 1);
+x
+library(ggplot2)#
+# Define settings#
+alpha = 0.4#
+lambda = 0.9#
+base_folder = "/Users/robrechtconjaerts/Downloads/Desktop/"#
+# There have to exist some folders with the EXACT name as in the "settings"#
+settings = c("4vs4 with", "4vs4 without")#
+trials_per_setting = 5#
+num_episodes = 100#
+# Data collection and aggregation#
+dta = data.frame()#
+for(s in settings){#
+for(j in seq(0, trials_per_setting-1)){#
+trial_file = paste0(base_folder, s, "/trial", j, "_out.txt", sep="")#
+trial_data = read.csv(trial_file, header=F, col.names=c("episode","reward", "steps"))[1:num_episodes, ]#
+trial_data$episode = c(1:num_episodes)#
+trial_data$setting = s#
+trial_data$trial = j#
+dta = rbind(dta, trial_data)#
+}#
+}#
+remove(trial_data, s, j)#
+# Plotting fun#
+plt = function(y_string){#
+ggplot(aes_string(x="episode", y=y_string, color="setting"), data=dta) +#
+geom_smooth(size=1) +#
+ggtitle(paste0('Smoothed ',y_string, ', with alpha=', alpha,' and lambda=',lambda))#
+}#
+plt("reward")#
+plt("steps")
+library(ggplot2)#
+# Define settings#
+alpha = 0.4#
+lambda = 0.9#
+base_folder = "/Users/robrechtconjaerts/Downloads/Desktop/"#
+# There have to exist some folders with the EXACT name as in the "settings"#
+settings = c("4vs4 with", "4vs4 without", "16vs16 with", "16vs16 without", "32vs32 with", "32vs32 without")#
+trials_per_setting = 5#
+num_episodes = 100#
+# Data collection and aggregation#
+dta = data.frame()#
+for(s in settings){#
+for(j in seq(0, trials_per_setting-1)){#
+trial_file = paste0(base_folder, s, "/trial", j, "_out.txt", sep="")#
+trial_data = read.csv(trial_file, header=F, col.names=c("episode","reward", "steps"))[1:num_episodes, ]#
+trial_data$episode = c(1:num_episodes)#
+trial_data$setting = s#
+trial_data$trial = j#
+dta = rbind(dta, trial_data)#
+}#
+}#
+remove(trial_data, s, j)#
+# Plotting fun#
+plt = function(y_string){#
+ggplot(aes_string(x="episode", y=y_string, color="setting"), data=dta) +#
+geom_smooth(size=1) +#
+ggtitle(paste0('Smoothed ',y_string, ', with alpha=', alpha,' and lambda=',lambda))#
+}#
+plt("reward")#
+plt("steps")
+library(ggplot2)#
+# Define settings#
+alpha = 0.4#
+lambda = 0.9#
+base_folder = "/Users/robrechtconjaerts/Downloads/Desktop/"#
+# There have to exist some folders with the EXACT name as in the "settings"#
+settings = c("4vs4 with", "4vs4 without", "16vs16 with", "16vs16 without", "32vs32 with", "32vs32 without")#
+trials_per_setting = 5#
+num_episodes = 100#
+# Data collection and aggregation#
+dta = data.frame()#
+for(s in settings){#
+for(j in seq(0, trials_per_setting-1)){#
+trial_file = paste0(base_folder, s, "/trial", j, "_out.txt", sep="")#
+trial_data = read.csv(trial_file, header=F, col.names=c("episode","reward", "steps"))[1:num_episodes, ]#
+trial_data$episode = c(1:num_episodes)#
+trial_data$setting = s#
+trial_data$trial = j#
+dta = rbind(dta, trial_data)#
+}#
+}#
+remove(trial_data, s, j)#
+# Plotting fun#
+plt = function(y_string){#
+ggplot(aes_string(x="episode", y=y_string, color="setting"), data=dta) +#
+geom_smooth(size=1) +#
+ggtitle(paste0('Smoothed ',y_string, ', with alpha=', alpha,' and lambda=',lambda))#
+}#
+plt("reward")
+library(ggplot2)#
+# Define settings#
+alpha = 0.4#
+lambda = 0.9#
+base_folder = "/Users/robrechtconjaerts/Downloads/Desktop/"#
+# There have to exist some folders with the EXACT name as in the "settings"#
+settings = c("4vs4 with", "4vs4 without", "16vs16 with", "16vs16 without", "32vs32 with", "32vs32 without")#
+trials_per_setting = 5#
+num_episodes = 100#
+# Data collection and aggregation#
+dta = data.frame()#
+for(s in settings){#
+for(j in seq(0, trials_per_setting-1)){#
+trial_file = paste0(base_folder, s, "/trial", j, "_out.txt", sep="")#
+trial_data = read.csv(trial_file, header=F, col.names=c("episode","reward", "steps"))[1:num_episodes, ]#
+trial_data$episode = c(1:num_episodes)#
+trial_data$setting = s#
+trial_data$trial = j#
+dta = rbind(dta, trial_data)#
+}#
+}#
+remove(trial_data, s, j)#
+# Plotting fun#
+plt = function(y_string){#
+ggplot(aes_string(x="episode", y=y_string, color="setting"), data=dta) +#
+geom_smooth(size=1) +#
+ggtitle(paste0('Starcraft a=', alpha,', l=',lambda))#
+}#
+plt("reward")
+library(ggplot2)#
+# Define settings#
+alpha = 0.4#
+lambda = 0.9#
+base_folder = "/Users/robrechtconjaerts/Downloads/Desktop/"#
+# There have to exist some folders with the EXACT name as in the "settings"#
+settings = c("4vs4 with", "4vs4 without", "16vs16 with", "16vs16 without", "32vs32 with", "32vs32 without")#
+trials_per_setting = 5#
+num_episodes = 100#
+# Data collection and aggregation#
+dta = data.frame()#
+for(s in settings){#
+for(j in seq(0, trials_per_setting-1)){#
+trial_file = paste0(base_folder, s, "/trial", j, "_out.txt", sep="")#
+trial_data = read.csv(trial_file, header=F, col.names=c("episode","reward", "steps"))[1:num_episodes, ]#
+trial_data$episode = c(1:num_episodes)#
+trial_data$setting = s#
+trial_data$trial = j#
+dta = rbind(dta, trial_data)#
+}#
+}#
+remove(trial_data, s, j)#
+# Plotting fun#
+plt = function(y_string){#
+ggplot(aes_string(x="episode", y=y_string, color="setting"), data=dta) +#
+geom_smooth(size=1) +#
+ggtitle(paste0('Starcraft a=', alpha,', l=',lambda))#
+}#
+plt("steps")
+library(ggplot2)#
+# Define settings#
+alpha = 0.4#
+lambda = 0.9#
+base_folder = "/Users/robrechtconjaerts/Documenten/Robrecht/Universiteit/Multi-agent seminar/Taak 4/"#
+# There have to exist some folders with the EXACT name as in the "settings"#
+settings = c("Base", "Distance", "Hitpoints", "Enemy attacking moving", "Combination")#
+trials_per_setting = 10#
+num_episodes = 100#
+# Data collection and aggregation#
+dta = data.frame()#
+for(s in settings){#
+for(j in seq(0, trials_per_setting-1)){#
+trial_file = paste0(base_folder, s, "/trial", j, "_out.txt", sep="")#
+trial_data = read.csv(trial_file, header=F, col.names=c("episode","reward", "steps"))[1:num_episodes, ]#
+trial_data$episode = c(1:num_episodes)#
+trial_data$setting = s#
+trial_data$trial = j#
+dta = rbind(dta, trial_data)#
+}#
+}#
+remove(trial_data, s, j)#
+# Plotting fun#
+plt = function(y_string, show_confidence=TRUE){#
+ggplot(aes_string(x="episode", y=y_string, color="setting"), data=dta) +#
+geom_smooth(size=1.1, se=show_confidence) +#
+ggtitle(paste0('Smoothed ',y_string, ', with alpha=', alpha,' and lambda=',lambda))#
+}#
+plt("reward", TRUE)#
+plt("steps", FALSE)
+library(ggplot2)#
+# Define settings#
+alpha = 0.4#
+lambda = 0.9#
+base_folder = "/Users/robrechtconjaerts/Documents/Robrecht/Universiteit/Multi-agent seminar/Taak 4/"#
+# There have to exist some folders with the EXACT name as in the "settings"#
+settings = c("Base", "Distance", "Hitpoints", "Enemy attacking moving", "Combination")#
+trials_per_setting = 10#
+num_episodes = 100#
+# Data collection and aggregation#
+dta = data.frame()#
+for(s in settings){#
+for(j in seq(0, trials_per_setting-1)){#
+trial_file = paste0(base_folder, s, "/trial", j, "_out.txt", sep="")#
+trial_data = read.csv(trial_file, header=F, col.names=c("episode","reward", "steps"))[1:num_episodes, ]#
+trial_data$episode = c(1:num_episodes)#
+trial_data$setting = s#
+trial_data$trial = j#
+dta = rbind(dta, trial_data)#
+}#
+}#
+remove(trial_data, s, j)#
+# Plotting fun#
+plt = function(y_string, show_confidence=TRUE){#
+ggplot(aes_string(x="episode", y=y_string, color="setting"), data=dta) +#
+geom_smooth(size=1.1, se=show_confidence) +#
+ggtitle(paste0('Smoothed ',y_string, ', with alpha=', alpha,' and lambda=',lambda))#
+}#
+plt("reward", TRUE)#
+plt("steps", FALSE)
+library(ggplot2)#
+# Define settings#
+alpha = 0.4#
+lambda = 0.9#
+base_folder = "/Users/robrechtconjaerts/Documenten/Robrecht/Universiteit/Multi-agent seminar/Taak 4/"#
+# There have to exist some folders with the EXACT name as in the "settings"#
+settings = c("Base", "Distance", "Hitpoints", "Enemy attacking moving", "Combination")#
+trials_per_setting = 10#
+num_episodes = 100#
+# Data collection and aggregation#
+dta = data.frame()#
+for(s in settings){#
+for(j in seq(0, trials_per_setting-1)){#
+trial_file = paste0(base_folder, s, "/trial", j, "_out.txt", sep="")#
+trial_data = read.csv(trial_file, header=F, col.names=c("episode","reward", "steps"))[1:num_episodes, ]#
+trial_data$episode = c(1:num_episodes)#
+trial_data$setting = s#
+trial_data$trial = j#
+dta = rbind(dta, trial_data)#
+}#
+}#
+remove(trial_data, s, j)#
+# Plotting fun#
+plt = function(y_string, show_confidence=TRUE){#
+ggplot(aes_string(x="episode", y=y_string, color="setting"), data=dta) +#
+geom_smooth(size=1.1, se=show_confidence) +#
+ggtitle(paste0('Smoothed ',y_string, ', with alpha=', alpha,' and lambda=',lambda))#
+}#
+plt("reward", TRUE)
+library(ggplot2)#
+# Define settings#
+alpha = 0.4#
+lambda = 0.9#
+base_folder = "/Users/robrechtconjaerts/Documenten/Robrecht/Universiteit/Multi-agent seminar/Taak 4/"#
+# There have to exist some folders with the EXACT name as in the "settings"#
+settings = c("Base", "Distance", "Hitpoints", "Enemy attacking moving", "Combination")#
+trials_per_setting = 10#
+num_episodes = 100#
+# Data collection and aggregation#
+dta = data.frame()#
+for(s in settings){#
+for(j in seq(0, trials_per_setting-1)){#
+trial_file = paste0(base_folder, s, "/trial", j, "_out.txt", sep="")#
+trial_data = read.csv(trial_file, header=F, col.names=c("episode","reward", "steps"))[1:num_episodes, ]#
+trial_data$episode = c(1:num_episodes)#
+trial_data$setting = s#
+trial_data$trial = j#
+dta = rbind(dta, trial_data)#
+}#
+}#
+remove(trial_data, s, j)#
+# Plotting fun#
+plt = function(y_string, show_confidence=TRUE){#
+ggplot(aes_string(x="episode", y=y_string, color="setting"), data=dta) +#
+geom_smooth(size=1.1, se=show_confidence) +#
+ggtitle(paste0('Smoothed ',y_string, ', with alpha=', alpha,' and lambda=',lambda))#
+}#
+plt("reward", FALSE)
+library(ggplot2)#
+# Define settings#
+alpha = 0.4#
+lambda = 0.9#
+base_folder = "/Users/robrechtconjaerts/Documents/Robrecht/Universiteit/Multi-agent seminar/Taak 4/"#
+# There have to exist some folders with the EXACT name as in the "settings"#
+settings = c("Base", "Distance", "Hitpoints", "Enemy attacking moving", "Combination")#
+trials_per_setting = 10#
+num_episodes = 100#
+# Data collection and aggregation#
+dta = data.frame()#
+for(s in settings){#
+for(j in seq(0, trials_per_setting-1)){#
+trial_file = paste0(base_folder, s, "/trial", j, "_out.txt", sep="")#
+trial_data = read.csv(trial_file, header=F, col.names=c("episode","reward", "steps"))[1:num_episodes, ]#
+trial_data$episode = c(1:num_episodes)#
+trial_data$setting = s#
+trial_data$trial = j#
+dta = rbind(dta, trial_data)#
+}#
+}#
+remove(trial_data, s, j)#
+# Plotting fun#
+plt = function(y_string, show_confidence=TRUE){#
+ggplot(aes_string(x="episode", y=y_string, color="setting"), data=dta) +#
+geom_smooth(size=1.1, se=show_confidence) +#
+ggtitle(paste0('Smoothed ',y_string, ', with alpha=', alpha,' and lambda=',lambda))#
+}#
+plt("reward", TRUE)
+library(ggplot2)#
+# Define settings#
+alpha = 0.4#
+lambda = 0.9#
+base_folder = "/Users/robrechtconjaerts/Documents/Robrecht/Universiteit/Multi-agent seminar/Taak 4/"#
+# There have to exist some folders with the EXACT name as in the "settings"#
+settings = c("Base", "Distance", "Hitpoints", "Enemy attacking moving", "Combination")#
+trials_per_setting = 10#
+num_episodes = 100#
+# Data collection and aggregation#
+dta = data.frame()#
+for(s in settings){#
+for(j in seq(0, trials_per_setting-1)){#
+trial_file = paste0(base_folder, s, "/trial", j, "_out.txt", sep="")#
+trial_data = read.csv(trial_file, header=F, col.names=c("episode","reward", "steps"))[1:num_episodes, ]#
+trial_data$episode = c(1:num_episodes)#
+trial_data$setting = s#
+trial_data$trial = j#
+dta = rbind(dta, trial_data)#
+}#
+}#
+remove(trial_data, s, j)#
+# Plotting fun#
+plt = function(y_string, show_confidence=TRUE){#
+ggplot(aes_string(x="episode", y=y_string, color="setting"), data=dta) +#
+geom_smooth(size=1.1, se=show_confidence) +#
+ggtitle(paste0('Smoothed ',y_string, ', with alpha=', alpha,' and lambda=',lambda))#
+}#
+plt("steps", FALSE)
+library(ggplot2)#
+# Define settings#
+alpha = 0.4#
+lambda = 0.9#
+base_folder = "/Users/robrechtconjaerts/Documents/Robrecht/Universiteit/Multi-agent seminar/Taak 2/"#
+# There have to exist some folders with the EXACT name as in the "settings"#
+settings = c("10vs16", "10vs32", "10vs64", "15vs16", "15vs32", "15vs64", "20vs16", "20vs32", "20vs64")#
+trials_per_setting = 10#
+num_episodes = 100#
+# Data collection and aggregation#
+dta = data.frame()#
+for(s in settings){#
+for(j in seq(0, trials_per_setting-1)){#
+trial_file = paste0(base_folder, s, "/trial", j, "_out.txt", sep="")#
+trial_data = read.csv(trial_file, header=F, col.names=c("episode","reward", "steps"))[1:num_episodes, ]#
+trial_data$episode = c(1:num_episodes)#
+trial_data$setting = s#
+trial_data$trial = j#
+dta = rbind(dta, trial_data)#
+}#
+}#
+remove(trial_data, s, j)#
+# Plotting fun#
+plt = function(y_string, show_confidence=TRUE){#
+ggplot(aes_string(x="episode", y=y_string, color="setting"), data=dta) +#
+geom_smooth(size=1.1, se=show_confidence) +#
+ggtitle(paste0('Smoothed ',y_string, ', with alpha=', alpha,' and lambda=',lambda))#
+}#
+plt("reward", TRUE)
+library(ggplot2)#
+# Define settings#
+alpha = 0.4#
+lambda = 0.9#
+base_folder = "/Users/robrechtconjaerts/Documents/Robrecht/Universiteit/Multi-agent seminar/Taak 2/"#
+# There have to exist some folders with the EXACT name as in the "settings"#
+settings = c("10vs16", "10vs32", "10vs64", "15vs16", "15vs32", "15vs64", "20vs16", "20vs32", "20vs64")#
+trials_per_setting = 5#
+num_episodes = 100#
+# Data collection and aggregation#
+dta = data.frame()#
+for(s in settings){#
+for(j in seq(0, trials_per_setting-1)){#
+trial_file = paste0(base_folder, s, "/trial", j, "_out.txt", sep="")#
+trial_data = read.csv(trial_file, header=F, col.names=c("episode","reward", "steps"))[1:num_episodes, ]#
+trial_data$episode = c(1:num_episodes)#
+trial_data$setting = s#
+trial_data$trial = j#
+dta = rbind(dta, trial_data)#
+}#
+}#
+remove(trial_data, s, j)#
+# Plotting fun#
+plt = function(y_string, show_confidence=TRUE){#
+ggplot(aes_string(x="episode", y=y_string, color="setting"), data=dta) +#
+geom_smooth(size=1.1, se=show_confidence) +#
+ggtitle(paste0('Smoothed ',y_string, ', with alpha=', alpha,' and lambda=',lambda))#
+}#
+plt("reward", TRUE)
+library(ggplot2)#
+# Define settings#
+alpha = 0.4#
+lambda = 0.9#
+base_folder = "/Users/robrechtconjaerts/Documents/Robrecht/Universiteit/Multi-agent learning seminar/Taak 2/"#
+# There have to exist some folders with the EXACT name as in the "settings"#
+settings = c("10vs16", "10vs32", "10vs64", "15vs16", "15vs32", "15vs64", "20vs16", "20vs32", "20vs64")#
+trials_per_setting = 5#
+num_episodes = 100#
+# Data collection and aggregation#
+dta = data.frame()#
+for(s in settings){#
+for(j in seq(0, trials_per_setting-1)){#
+trial_file = paste0(base_folder, s, "/trial", j, "_out.txt", sep="")#
+trial_data = read.csv(trial_file, header=F, col.names=c("episode","reward", "steps"))[1:num_episodes, ]#
+trial_data$episode = c(1:num_episodes)#
+trial_data$setting = s#
+trial_data$trial = j#
+dta = rbind(dta, trial_data)#
+}#
+}#
+remove(trial_data, s, j)#
+# Plotting fun#
+plt = function(y_string, show_confidence=TRUE){#
+ggplot(aes_string(x="episode", y=y_string, color="setting"), data=dta) +#
+geom_smooth(size=1.1, se=show_confidence) +#
+ggtitle(paste0('Smoothed ',y_string, ', with alpha=', alpha,' and lambda=',lambda))#
+}#
+plt("reward", TRUE)
+library(ggplot2)#
+# Define settings#
+alpha = 0.4#
+lambda = 0.9#
+base_folder = "/Users/robrechtconjaerts/Documents/Robrecht/Universiteit/Multi-agent seminar/Taak 5/"#
+# There have to exist some folders with the EXACT name as in the "settings"#
+settings = c("Base")#
+trials_per_setting = 1#
+num_episodes = 100#
+# Data collection and aggregation#
+dta = data.frame()#
+for(s in settings){#
+for(j in seq(0, trials_per_setting-1)){#
+trial_file = paste0(base_folder, s, "/trial", j, "_out.txt", sep="")#
+trial_data = read.csv(trial_file, header=F, col.names=c("episode","reward", "steps"))[1:num_episodes, ]#
+trial_data$episode = c(1:num_episodes)#
+trial_data$setting = s#
+trial_data$trial = j#
+dta = rbind(dta, trial_data)#
+}#
+}#
+remove(trial_data, s, j)#
+# Plotting fun#
+plt = function(y_string, show_confidence=TRUE){#
+ggplot(aes_string(x="episode", y=y_string, color="setting"), data=dta) +#
+geom_smooth(size=1.1, se=show_confidence) +#
+ggtitle(paste0('Smoothed ',y_string, ', with alpha=', alpha,' and lambda=',lambda))#
+}#
+plt("reward", TRUE)#
+plt("steps", FALSE)
+library(ggplot2)#
+# Define settings#
+alpha = 0.4#
+lambda = 0.9#
+base_folder = "/Users/robrechtconjaerts/Documents/Robrecht/Universiteit/Multi-agent learning seminar/Taak 5/"#
+# There have to exist some folders with the EXACT name as in the "settings"#
+settings = c("Base")#
+trials_per_setting = 1#
+num_episodes = 100#
+# Data collection and aggregation#
+dta = data.frame()#
+for(s in settings){#
+for(j in seq(0, trials_per_setting-1)){#
+trial_file = paste0(base_folder, s, "/trial", j, "_out.txt", sep="")#
+trial_data = read.csv(trial_file, header=F, col.names=c("episode","reward", "steps"))[1:num_episodes, ]#
+trial_data$episode = c(1:num_episodes)#
+trial_data$setting = s#
+trial_data$trial = j#
+dta = rbind(dta, trial_data)#
+}#
+}#
+remove(trial_data, s, j)#
+# Plotting fun#
+plt = function(y_string, show_confidence=TRUE){#
+ggplot(aes_string(x="episode", y=y_string, color="setting"), data=dta) +#
+geom_smooth(size=1.1, se=show_confidence) +#
+ggtitle(paste0('Smoothed ',y_string, ', with alpha=', alpha,' and lambda=',lambda))#
+}#
+plt("reward", TRUE)#
+plt("steps", FALSE)
+library(ggplot2)#
+# Define settings#
+alpha = 0.4#
+lambda = 0.9#
+base_folder = "/Users/robrechtconjaerts/Documents/Robrecht/Universiteit/Multi-agent learning seminar/Taak 5/"#
+# There have to exist some folders with the EXACT name as in the "settings"#
+settings = c("Base")#
+trials_per_setting = 1#
+num_episodes = 100#
+# Data collection and aggregation#
+dta = data.frame()#
+for(s in settings){#
+for(j in seq(0, trials_per_setting-1)){#
+trial_file = paste0(base_folder, s, "/trial", j, "_out.txt", sep="")#
+trial_data = read.csv(trial_file, header=F, col.names=c("episode","reward", "steps"))[1:num_episodes, ]#
+trial_data$episode = c(1:num_episodes)#
+trial_data$setting = s#
+trial_data$trial = j#
+dta = rbind(dta, trial_data)#
+}#
+}#
+remove(trial_data, s, j)#
+# Plotting fun#
+plt = function(y_string, show_confidence=TRUE){#
+ggplot(aes_string(x="episode", y=y_string, color="setting"), data=dta) +#
+geom_smooth(size=1.1, se=show_confidence) +#
+ggtitle(paste0('Smoothed ',y_string, ', with alpha=', alpha,' and lambda=',lambda))#
+}#
+plt("reward", TRUE)
+library(ggplot2)#
+# Define settings#
+alpha = 0.4#
+lambda = 0.9#
+base_folder = "/Users/robrechtconjaerts/Documents/Robrecht/Universiteit/Multi-agent learning seminar/Taak 5/"#
+# There have to exist some folders with the EXACT name as in the "settings"#
+settings = c("Base")#
+trials_per_setting = 1#
+num_episodes = 100#
+# Data collection and aggregation#
+dta = data.frame()#
+for(s in settings){#
+for(j in seq(0, trials_per_setting-1)){#
+trial_file = paste0(base_folder, s, "/trial", j, "_out.txt", sep="")#
+trial_data = read.csv(trial_file, header=F, col.names=c("episode","reward", "steps"))[1:num_episodes, ]#
+trial_data$episode = c(1:num_episodes)#
+trial_data$setting = s#
+trial_data$trial = j#
+dta = rbind(dta, trial_data)#
+}#
+}#
+remove(trial_data, s, j)#
+# Plotting fun#
+plt = function(y_string, show_confidence=TRUE){#
+ggplot(aes_string(x="episode", y=y_string, color="setting"), data=dta) +#
+geom_smooth(size=1.1, se=show_confidence) +#
+ggtitle(paste0('Smoothed ',y_string, ', with alpha=', alpha,' and lambda=',lambda))#
+}#
+plt("steps", FALSE)
+library(ggplot2)#
+# Define settings#
+alpha = 0.4#
+lambda = 0.9#
+base_folder = "/Users/robrechtconjaerts/Documents/Robrecht/Universiteit/Multi-agent learning seminar/Taak 5/"#
+# There have to exist some folders with the EXACT name as in the "settings"#
+settings = c("Base")#
+trials_per_setting = 1#
+num_episodes = 100#
+# Data collection and aggregation#
+dta = data.frame()#
+for(s in settings){#
+for(j in seq(0, trials_per_setting-1)){#
+trial_file = paste0(base_folder, s, "/trial", j, "_out.txt", sep="")#
+trial_data = read.csv(trial_file, header=F, col.names=c("episode","reward", "steps"))[1:num_episodes, ]#
+trial_data$episode = c(1:num_episodes)#
+trial_data$setting = s#
+trial_data$trial = j#
+dta = rbind(dta, trial_data)#
+}#
+}#
+remove(trial_data, s, j)#
+# Plotting fun#
+plt = function(y_string, show_confidence=TRUE){#
+ggplot(aes_string(x="episode", y=y_string, color="setting"), data=dta*-1.5) +#
+geom_smooth(size=1.1, se=show_confidence) +#
+ggtitle(paste0('Smoothed ',y_string, ', with alpha=', alpha,' and lambda=',lambda))#
+}#
+plt("rewards", TRUE)
+library(ggplot2)#
+# Define settings#
+alpha = 0.4#
+lambda = 0.9#
+base_folder = "/Users/robrechtconjaerts/Documents/Robrecht/Universiteit/Multi-agent learning seminar/Taak 5/"#
+# There have to exist some folders with the EXACT name as in the "settings"#
+settings = c("Base")#
+trials_per_setting = 1#
+num_episodes = 100#
+# Data collection and aggregation#
+dta = data.frame()#
+for(s in settings){#
+for(j in seq(0, trials_per_setting-1)){#
+trial_file = paste0(base_folder, s, "/trial", j, "_out.txt", sep="")#
+trial_data = read.csv(trial_file, header=F, col.names=c("episode","reward", "steps"))[1:num_episodes, ]#
+trial_data$episode = c(1:num_episodes)#
+trial_data$setting = s#
+trial_data$trial = j#
+dta = rbind(dta, trial_data)#
+}#
+}#
+remove(trial_data, s, j)#
+# Plotting fun#
+plt = function(y_string, show_confidence=TRUE){#
+ggplot(aes_string(x="episode", y=y_string, color="setting"), data=(dta*-1,5)) +#
+geom_smooth(size=1.1, se=show_confidence) +#
+ggtitle(paste0('Smoothed ',y_string, ', with alpha=', alpha,' and lambda=',lambda))#
+}#
+plt("rewards", TRUE)
+library(ggplot2)#
+# Define settings#
+alpha = 0.4#
+lambda = 0.9#
+base_folder = "/Users/robrechtconjaerts/Documents/Robrecht/Universiteit/Multi-agent learning seminar/Taak 5/"#
+# There have to exist some folders with the EXACT name as in the "settings"#
+settings = c("Base")#
+trials_per_setting = 1#
+num_episodes = 100#
+# Data collection and aggregation#
+dta = data.frame()#
+for(s in settings){#
+for(j in seq(0, trials_per_setting-1)){#
+trial_file = paste0(base_folder, s, "/trial", j, "_out.txt", sep="")#
+trial_data = read.csv(trial_file, header=F, col.names=c("episode","reward", "steps"))[1:num_episodes, ]#
+trial_data$episode = c(1:num_episodes)#
+trial_data$setting = s#
+trial_data$trial = j#
+dta = rbind(dta, trial_data)#
+}#
+}#
+remove(trial_data, s, j)#
+# Plotting fun#
+plt = function(y_string, show_confidence=TRUE){#
+ggplot(aes_string(x="episode", y=y_string, color="setting"), data=(dta*-1.5)) +#
+geom_smooth(size=1.1, se=show_confidence) +#
+ggtitle(paste0('Smoothed ',y_string, ', with alpha=', alpha,' and lambda=',lambda))#
+}#
+plt("rewards", TRUE)
+library(ggplot2)#
+# Define settings#
+alpha = 0.4#
+lambda = 0.9#
+base_folder = "/Users/robrechtconjaerts/Documents/Robrecht/Universiteit/Multi-agent learning seminar/Taak 5/"#
+# There have to exist some folders with the EXACT name as in the "settings"#
+settings = c("Base")#
+trials_per_setting = 1#
+num_episodes = 100#
+# Data collection and aggregation#
+dta = data.frame()#
+for(s in settings){#
+for(j in seq(0, trials_per_setting-1)){#
+trial_file = paste0(base_folder, s, "/trial", j, "_out.txt", sep="")#
+trial_data = read.csv(trial_file, header=F, col.names=c("episode","reward", "steps"))[1:num_episodes, ]#
+trial_data$episode = c(1:num_episodes)#
+trial_data$setting = s#
+trial_data$trial = j#
+dta = rbind(dta, trial_data)#
+}#
+}#
+remove(trial_data, s, j)#
+# Plotting fun#
+plt = function(y_string, show_confidence=TRUE){#
+ggplot(aes_string(x="episode", y=y_string, color="setting"), data=(dta+30)) +#
+geom_smooth(size=1.1, se=show_confidence) +#
+ggtitle(paste0('Smoothed ',y_string, ', with alpha=', alpha,' and lambda=',lambda))#
+}#
+plt("rewards", TRUE)
+library(ggplot2)#
+# Define settings#
+alpha = 0.4#
+lambda = 0.9#
+base_folder = "/Users/robrechtconjaerts/Documents/Robrecht/Universiteit/Multi-agent learning seminar/Taak 5/"#
+# There have to exist some folders with the EXACT name as in the "settings"#
+settings = c("Base")#
+trials_per_setting = 1#
+num_episodes = 100#
+# Data collection and aggregation#
+dta = data.frame()#
+for(s in settings){#
+for(j in seq(0, trials_per_setting-1)){#
+trial_file = paste0(base_folder, s, "/trial", j, "_out.txt", sep="")#
+trial_data = read.csv(trial_file, header=F, col.names=c("episode","reward", "steps"))[1:num_episodes, ]#
+trial_data$episode = c(1:num_episodes)#
+trial_data$setting = s#
+trial_data$trial = j#
+dta = rbind(dta, trial_data)#
+}#
+}#
+remove(trial_data, s, j)#
+# Plotting fun#
+plt = function(y_string, show_confidence=TRUE){#
+ggplot(aes_string(x="episode", y=y_string, color="setting"), data=dta) +#
+geom_smooth(size=1.1, se=show_confidence) +#
+ggtitle(paste0('Smoothed ',y_string, ', with alpha=', alpha,' and lambda=',lambda))#
+}#
+plt("rewards", TRUE)
+library(ggplot2)#
+# Define settings#
+alpha = 0.4#
+lambda = 0.9#
+base_folder = "/Users/robrechtconjaerts/Documents/Robrecht/Universiteit/Multi-agent learning seminar/Taak 5/"#
+# There have to exist some folders with the EXACT name as in the "settings"#
+settings = c("Base")#
+trials_per_setting = 1#
+num_episodes = 100#
+# Data collection and aggregation#
+dta = data.frame()#
+for(s in settings){#
+for(j in seq(0, trials_per_setting-1)){#
+trial_file = paste0(base_folder, s, "/trial", j, "_out.txt", sep="")#
+trial_data = read.csv(trial_file, header=F, col.names=c("episode","reward", "steps"))[1:num_episodes, ]#
+trial_data$episode = c(1:num_episodes)#
+trial_data$setting = s#
+trial_data$trial = j#
+dta = rbind(dta, trial_data)#
+}#
+}#
+remove(trial_data, s, j)#
+# Plotting fun#
+plt = function(y_string, show_confidence=TRUE){#
+ggplot(aes_string(x="episode", y=y_string, color="setting"), data=dta) +#
+geom_smooth(size=1.1, se=show_confidence) +#
+ggtitle(paste0('Smoothed ',y_string, ', with alpha=', alpha,' and lambda=',lambda))#
+}#
+plt("reward", TRUE)
+library(ggplot2)#
+# Define settings#
+alpha = 0.4#
+lambda = 0.9#
+base_folder = "/Users/robrechtconjaerts/Documents/Robrecht/Universiteit/Multi-agent learning seminar/Taak 5/"#
+# There have to exist some folders with the EXACT name as in the "settings"#
+settings = c("Base")#
+trials_per_setting = 1#
+num_episodes = 100#
+# Data collection and aggregation#
+dta = data.frame()#
+for(s in settings){#
+for(j in seq(0, trials_per_setting-1)){#
+trial_file = paste0(base_folder, s, "/trial", j, "_out.txt", sep="")#
+trial_data = read.csv(trial_file, header=F, col.names=c("episode","reward", "steps"))[1:num_episodes, ]#
+trial_data$episode = c(1:num_episodes)#
+trial_data$setting = s#
+trial_data$trial = j#
+dta = rbind(dta, trial_data)#
+}#
+}#
+remove(trial_data, s, j)#
+# Plotting fun#
+plt = function(y_string, show_confidence=TRUE){#
+ggplot(aes_string(x="episode", y=y_string, color="setting"), data=dta) +#
+geom_smooth(size=1.1, se=show_confidence) +#
+ggtitle(paste0('Smoothed ',y_string, ', with alpha=', alpha,' and lambda=',lambda))#
+}#
+plt("reward", FALSE)
+dta
+dta$reward
+dta$reward[0]
+dta$reward[1]
+dta$reward[2]
+dta$reward[100]
+for(j in seq(1, trials_per_setting)){ dta$reward[j] = dta$reward[j] + 30; }
+dta
+for(j in 1:100){ dta$reward[j] = dta$reward[j] + 30; }
+dta
+library(ggplot2)#
+# Define settings#
+alpha = 0.4#
+lambda = 0.9#
+base_folder = "/Users/robrechtconjaerts/Documents/Robrecht/Universiteit/Multi-agent learning seminar/Taak 5/"#
+# There have to exist some folders with the EXACT name as in the "settings"#
+settings = c("Base")#
+trials_per_setting = 1#
+num_episodes = 100#
+# Data collection and aggregation#
+dta = data.frame()#
+for(s in settings){#
+for(j in seq(0, trials_per_setting-1)){#
+trial_file = paste0(base_folder, s, "/trial", j, "_out.txt", sep="")#
+trial_data = read.csv(trial_file, header=F, col.names=c("episode","reward", "steps"))[1:num_episodes, ]#
+trial_data$episode = c(1:num_episodes)#
+trial_data$setting = s#
+trial_data$trial = j#
+dta = rbind(dta, trial_data)#
+}#
+}#
+remove(trial_data, s, j)#
+# Plotting fun#
+plt = function(y_string, show_confidence=TRUE){#
+ggplot(aes_string(x="episode", y=y_string, color="setting"), data=dta) +#
+geom_smooth(size=1.1, se=show_confidence) +#
+ggtitle(paste0('Smoothed ',y_string, ', with alpha=', alpha,' and lambda=',lambda))#
+}#
+plt("reward", FALSE)
+library(ggplot2)#
+# Define settings#
+alpha = 0.4#
+lambda = 0.9#
+base_folder = "/Users/robrechtconjaerts/Documents/Robrecht/Universiteit/Multi-agent learning seminar/Taak 5/"#
+# There have to exist some folders with the EXACT name as in the "settings"#
+settings = c("Base")#
+trials_per_setting = 1#
+num_episodes = 100#
+# Data collection and aggregation#
+dta = data.frame()#
+for(s in settings){#
+for(j in seq(0, trials_per_setting-1)){#
+trial_file = paste0(base_folder, s, "/trial", j, "_out.txt", sep="")#
+trial_data = read.csv(trial_file, header=F, col.names=c("episode","reward", "steps"))[1:num_episodes, ]#
+trial_data$episode = c(1:num_episodes)#
+trial_data$setting = s#
+trial_data$trial = j#
+dta = rbind(dta, trial_data)#
+}#
+}#
+for(j in 1:100){ dta$reward[j] = dta$reward[j] + 30; }#
+remove(trial_data, s, j)#
+# Plotting fun#
+plt = function(y_string, show_confidence=TRUE){#
+ggplot(aes_string(x="episode", y=y_string, color="setting"), data=dta) +#
+geom_smooth(size=1.1, se=show_confidence) +#
+ggtitle(paste0('Smoothed ',y_string, ', with alpha=', alpha,' and lambda=',lambda))#
+}#
+plt("reward", FALSE)
+library(ggplot2)#
+# Define settings#
+alpha = 0.4#
+lambda = 0.9#
+base_folder = "/Users/robrechtconjaerts/Documents/Robrecht/Universiteit/Multi-agent learning seminar/Taak 5/"#
+# There have to exist some folders with the EXACT name as in the "settings"#
+settings = c("Base")#
+trials_per_setting = 1#
+num_episodes = 100#
+# Data collection and aggregation#
+dta = data.frame()#
+for(s in settings){#
+for(j in seq(0, trials_per_setting-1)){#
+trial_file = paste0(base_folder, s, "/trial", j, "_out.txt", sep="")#
+trial_data = read.csv(trial_file, header=F, col.names=c("episode","reward", "steps"))[1:num_episodes, ]#
+trial_data$episode = c(1:num_episodes)#
+trial_data$setting = s#
+trial_data$trial = j#
+dta = rbind(dta, trial_data)#
+}#
+}#
+for(j in 1:100){ dta$reward[j] = dta$reward[j] + 50; }#
+remove(trial_data, s, j)#
+# Plotting fun#
+plt = function(y_string, show_confidence=TRUE){#
+ggplot(aes_string(x="episode", y=y_string, color="setting"), data=dta) +#
+geom_smooth(size=1.1, se=show_confidence) +#
+ggtitle(paste0('Smoothed ',y_string, ', with alpha=', alpha,' and lambda=',lambda))#
+}#
+plt("reward", FALSE)
+library(ggplot2)#
+# Define settings#
+alpha = 0.4#
+lambda = 0.9#
+base_folder = "/Users/robrechtconjaerts/Documents/Robrecht/Universiteit/Multi-agent learning seminar/Taak 5/"#
+# There have to exist some folders with the EXACT name as in the "settings"#
+settings = c("Base")#
+trials_per_setting = 1#
+num_episodes = 100#
+# Data collection and aggregation#
+dta = data.frame()#
+for(s in settings){#
+for(j in seq(0, trials_per_setting-1)){#
+trial_file = paste0(base_folder, s, "/trial", j, "_out.txt", sep="")#
+trial_data = read.csv(trial_file, header=F, col.names=c("episode","reward", "steps"))[1:num_episodes, ]#
+trial_data$episode = c(1:num_episodes)#
+trial_data$setting = s#
+trial_data$trial = j#
+dta = rbind(dta, trial_data)#
+}#
+}#
+for(j in 1:100){ dta$reward[j] = dta$reward[j] + 30; }#
+remove(trial_data, s, j)#
+# Plotting fun#
+plt = function(y_string, show_confidence=TRUE){#
+ggplot(aes_string(x="episode", y=y_string, color="setting"), data=dta) +#
+geom_smooth(size=1.1, se=show_confidence) +#
+ggtitle(paste0('Smoothed ',y_string, ', with alpha=', alpha,' and lambda=',lambda))#
+}#
+plt("reward", FALSE)
+library(ggplot2)#
+# Define settings#
+alpha = 0.4#
+lambda = 0.9#
+base_folder = "/Users/robrechtconjaerts/Documents/Robrecht/Universiteit/Multi-agent learning seminar/Taak 5/"#
+# There have to exist some folders with the EXACT name as in the "settings"#
+settings = c("Base")#
+trials_per_setting = 1#
+num_episodes = 100#
+# Data collection and aggregation#
+dta = data.frame()#
+for(s in settings){#
+for(j in seq(0, trials_per_setting-1)){#
+trial_file = paste0(base_folder, s, "/trial", j, "_out.txt", sep="")#
+trial_data = read.csv(trial_file, header=F, col.names=c("episode","reward", "steps"))[1:num_episodes, ]#
+trial_data$episode = c(1:num_episodes)#
+trial_data$setting = s#
+trial_data$trial = j#
+dta = rbind(dta, trial_data)#
+}#
+}#
+for(j in 1:100){ dta$reward[j] = dta$reward[j] + 10; }#
+remove(trial_data, s, j)#
+# Plotting fun#
+plt = function(y_string, show_confidence=TRUE){#
+ggplot(aes_string(x="episode", y=y_string, color="setting"), data=dta) +#
+geom_smooth(size=1.1, se=show_confidence) +#
+ggtitle(paste0('Smoothed ',y_string, ', with alpha=', alpha,' and lambda=',lambda))#
+}#
+plt("reward", FALSE)
+library(ggplot2)#
+# Define settings#
+alpha = 0.4#
+lambda = 0.9#
+base_folder = "/Users/robrechtconjaerts/Documents/Robrecht/Universiteit/Multi-agent learning seminar/Taak 4/"#
+# There have to exist some folders with the EXACT name as in the "settings"#
+settings = c("Base", "Distance", "Hitpoints", "Enemy attacking moving", "Combination")#
+trials_per_setting = 10#
+num_episodes = 100#
+# Data collection and aggregation#
+dta = data.frame()#
+for(s in settings){#
+for(j in seq(0, trials_per_setting-1)){#
+trial_file = paste0(base_folder, s, "/trial", j, "_out.txt", sep="")#
+trial_data = read.csv(trial_file, header=F, col.names=c("episode","reward", "steps"))[1:num_episodes, ]#
+trial_data$episode = c(1:num_episodes)#
+trial_data$setting = s#
+trial_data$trial = j#
+dta = rbind(dta, trial_data)#
+}#
+}#
+remove(trial_data, s, j)#
+# Plotting fun#
+plt = function(y_string, show_confidence=TRUE){#
+ggplot(aes_string(x="episode", y=y_string, color="setting"), data=dta) +#
+geom_smooth(size=1.1, se=show_confidence) +#
+ggtitle(paste0('Smoothed ',y_string, ', with alpha=', alpha,' and lambda=',lambda))#
+}#
+plt("reward", TRUE)#
+plt("steps", FALSE)
+LANGUAGE=EN
+LANGUAGE=en
+rect(0, 0, 5, 5)
+plot(c(100, 250), c(300, 450), type = "n", xlab = "", ylab = "", main = "2 x 11 rectangles; 'rect(100+i,300+i,  150+i,380+i)'")
+rect(0, 0, 5, 5)
+plot(c(100, 250), c(300, 450), type = "n", xlab = "", ylab = "", main = "2 x 11 rectangles; 'rect(100+i,300+i,  150+i,380+i)'")
+plot(c(0, 10), c(0, 10))
+rect(0, 0, 5, 5)
+plot(c(0, 10), c(0, 10), type="n")
+rect(0, 0, 5, 5)
+points(2.5, 2.5)
+plot(c(0, 6), c(0, 6), type="n")
+rect(0, 0, 5, 5)
+plot(c(0, 7), c(0, 7), type="n")
+rect(0, 0, 6, 6)
+rect(0, 0, 2, 6)
+rect(0, 2, 4, 6)
+plot(c(0, 7), c(0, 7), type="n")
+rect(0, 0, 6, 6)
+rect(0, 0, 2, 6)
+rect(2, 0, 4, 6)
+rect(4, 0, 6, 2)
+rect(4, 2, 6, 4)
+rect(0, 0, 2, 2)
+rect(0, 2, 2, 4)
+rect(4, 0, 4.666667, 2)
+rect(4.666667, 0, 5.33333, 2)
+points(3,3)
+points(1,3)#
+points(5,3)
+points(5,1)#
+points(5,5)
+points(1,1)#
+points(1,5)#
+points(4.333333,1)#
+points(5.777777,1)
+plot(c(0, 7), c(0, 7), type="n")#
+rect(0, 0, 6, 6)#
+points(3,3)
+png('rplot.png')
+points(3,3)
+plot(c(0, 7), c(0, 7), type="n")#
+rect(0, 0, 6, 6)#
+points(3,3)
+rect(0, 0, 2, 6)#
+rect(2, 0, 4, 6)#
+points(1,3)#
+points(5,3)
+plot(c(0, 7), c(0, 7), type="n")#
+rect(0, 0, 6, 6)#
+points(3,3)
+rect(0, 0, 2, 6)#
+rect(2, 0, 4, 6)#
+points(1,3)#
+points(5,3)
+rect(4, 0, 6, 2)#
+rect(4, 2, 6, 4)#
+points(5,1)#
+points(5,5)
+rect(0, 0, 2, 2)#
+rect(0, 2, 2, 4)#
+rect(4, 0, 4.666667, 2)#
+rect(4.666667, 0, 5.33333, 2)#
+points(1,1)#
+points(1,5)#
+points(4.333333,1)#
+points(5.777777,1)
+library(ggplot2)#
+# Define settings#
+alpha = 0.4#
+lambda = 0.98#
+base_folder = "/Users/robrechtconjaerts/Dropbox/Multi-Agent Learning Seminar/Pre-experiments/TR_Experiments/"#
+#D:/Dropbox/vm_shared/Project/#
+# There have to exist some folders with the EXACT name as in the "settings"#
+settings = c("Resolution1-1", "Resolution16-1", "Resolution16-8", "Resolution32-1")#
+trials_per_setting = 15#
+num_episodes = 200#
+# Data collection and aggregation#
+dta = data.frame()#
+for(s in settings){#
+  for(j in seq(0, trials_per_setting-1)){#
+    trial_file = paste0(base_folder, s, "/trial", j, "_out.txt", sep="")#
+    trial_data = read.csv(trial_file, header=F, col.names=c("episode","reward", "steps"))[1:num_episodes, ]#
+    trial_data$episode = c(1:num_episodes)#
+    trial_data$potential = s#
+    trial_data$trial = j#
+    dta = rbind(dta, trial_data)#
+  }#
+}#
+remove(trial_data, s, j)#
+# Plotting fun#
+plt = function(y_string){#
+  ggplot(aes_string(x="episode", y=y_string, color="potential"), data=dta) + #
+    geom_smooth(size=1) + #
+    ggtitle(paste0('Smoothed average ', y_string, ' over ', trials_per_setting, ' trials [alpha=', alpha, '/lambda=', lambda, ']'))#
+}#
+plt("reward")#
+plt("steps")#
+#
+stat_dta = dta[dta$episode==199,]#
+x = dta[dta$potential=='ensemble_2.5T_0.95D',]#
+y = dta[dta$potential=='ensemble_5.0T_0.98D',]#
+wilcox.test(x$reward, y$reward)
+library(ggplot2)#
+# Define settings#
+alpha = 0.4#
+lambda = 0.98#
+base_folder = "/Users/robrechtconjaerts/Dropbox/Multi-Agent Learning Seminar/Pre-experiments/TR_Experiments/"#
+#D:/Dropbox/vm_shared/Project/#
+# There have to exist some folders with the EXACT name as in the "settings"#
+settings = c("Resolution1-1", "Resolution16-1", "Resolution16-8", "Resolution32-1")#
+trials_per_setting = 15#
+num_episodes = 200#
+# Data collection and aggregation#
+dta = data.frame()#
+for(s in settings){#
+  for(j in seq(0, trials_per_setting-1)){#
+    trial_file = paste0(base_folder, s, "/trial", j, "_out.txt", sep="")#
+    trial_data = read.csv(trial_file, header=F, col.names=c("episode","reward", "steps"))[1:num_episodes, ]#
+    trial_data$episode = c(1:num_episodes)#
+    trial_data$potential = s#
+    trial_data$trial = j#
+    dta = rbind(dta, trial_data)#
+  }#
+}#
+remove(trial_data, s, j)#
+# Plotting fun#
+plt = function(y_string){#
+  ggplot(aes_string(x="episode", y=y_string, color="potential"), data=dta) + #
+    geom_smooth(size=1) + #
+    ggtitle(paste0('Smoothed average ', y_string, ' over ', trials_per_setting, ' trials [alpha=', alpha, '/lambda=', lambda, ']'))#
+}#
+plt("reward")
+library(ggplot2)#
+# Define settings#
+alpha = 0.4#
+lambda = 0.98#
+base_folder = "/Users/robrechtconjaerts/Dropbox/Multi-Agent Learning Seminar/Pre-experiments/TR_Experiments/"#
+#D:/Dropbox/vm_shared/Project/#
+# There have to exist some folders with the EXACT name as in the "settings"#
+settings = c("Resolution1-1", "Resolution16-1", "Resolution16-8", "Resolution32-1")#
+trials_per_setting = 15#
+num_episodes = 200#
+# Data collection and aggregation#
+dta = data.frame()#
+for(s in settings){#
+  for(j in seq(0, trials_per_setting-1)){#
+    trial_file = paste0(base_folder, s, "/trial", j, "_out.txt", sep="")#
+    trial_data = read.csv(trial_file, header=F, col.names=c("episode","reward", "steps"))[1:num_episodes, ]#
+    trial_data$episode = c(1:num_episodes)#
+    trial_data$potential = s#
+    trial_data$trial = j#
+    dta = rbind(dta, trial_data)#
+  }#
+}#
+remove(trial_data, s, j)#
+# Plotting fun#
+plt = function(y_string){#
+  ggplot(aes_string(x="episode", y=y_string, color="potential"), data=dta) + #
+    geom_smooth(size=1) + #
+    ggtitle(paste0('Smoothed average ', y_string, ' over ', trials_per_setting, ' trials [alpha=', alpha, '/lambda=', lambda, ']'))#
+}#
+plt("steps")
+library(jsonlite)
+download?
+;
+?
+;
+help
+help?
+;
+library(jsonlite)
+json <- "{#
+    "score": [#
+        1012,#
+        1640,#
+        460,#
+        1272,#
+        1356,#
+        1360,#
+        720,#
+        1332,#
+        764,#
+        1392,#
+        2192,#
+        560,#
+        740,#
+        1204,#
+        1500,#
+        596,#
+        1128,#
+        924,#
+        792,#
+        1356,#
+        588,#
+        872,#
+        604,#
+        1088,#
+        1168,#
+        428,#
+        2996,#
+        2392,#
+        596,#
+        1452,#
+        1740,#
+        428,#
+        516,#
+        1268,#
+        3188,#
+        636,#
+        1476,#
+        704,#
+        2528,#
+        1020,#
+        1384,#
+        1128,#
+        880,#
+        1352,#
+        1380,#
+        1004,#
+        1052,#
+        588,#
+        2148,#
+        1424,#
+        704,#
+        1472,#
+        1296,#
+        772,#
+        388,#
+        1068,#
+        720,#
+        932,#
+        2200,#
+        1532,#
+        1484,#
+        1492,#
+        1208,#
+        600,#
+        1328,#
+        492,#
+        704,#
+        528,#
+        1652,#
+        1452,#
+        1528,#
+        1252,#
+        1376,#
+        724,#
+        1296,#
+        1072,#
+        1496,#
+        1528,#
+        1308,#
+        1456,#
+        1280,#
+        1356,#
+        620,#
+        1424,#
+        704,#
+        2308,#
+        3100,#
+        736,#
+        1340,#
+        1312,#
+        332,#
+        1232,#
+        1236,#
+        696,#
+        740,#
+        992,#
+        1536,#
+        936,#
+        412,#
+        1136,#
+        2468,#
+        492,#
+        1244,#
+        1040,#
+        2520,#
+        1384,#
+        664,#
+        584,#
+        936,#
+        1376,#
+        2452,#
+        752,#
+        572,#
+        1056,#
+        896,#
+        572,#
+        1360,#
+        2848,#
+        1204,#
+        896,#
+        1728,#
+        1332,#
+        1052,#
+        524,#
+        1224,#
+        1304,#
+        1412,#
+        984,#
+        900,#
+        740,#
+        1232,#
+        1176,#
+        620,#
+        972,#
+        1388,#
+        688,#
+        684,#
+        784,#
+        1320,#
+        620,#
+        1644,#
+        1116,#
+        808,#
+        620,#
+        1328,#
+        652,#
+        1328,#
+        1632,#
+        1112,#
+        316,#
+        1296,#
+        284,#
+        1560,#
+        1048,#
+        356,#
+        2112,#
+        1588,#
+        728,#
+        608,#
+        1004,#
+        620,#
+        580,#
+        1352,#
+        1048,#
+        728,#
+        1076,#
+        1396,#
+        292,#
+        1332,#
+        748,#
+        1708,#
+        1072,#
+        2080,#
+        672,#
+        1396,#
+        1020,#
+        2660,#
+        1456,#
+        1280,#
+        628,#
+        1104,#
+        880,#
+        1080,#
+        652,#
+        364,#
+        1300,#
+        1268,#
+        1376,#
+        1472,#
+        2732,#
+        604,#
+        3028,#
+        696,#
+        1320,#
+        1124,#
+        2060,#
+        660,#
+        728,#
+        980,#
+        1288,#
+        1304,#
+        644,#
+        1416,#
+        1088,#
+        964,#
+        1612,#
+        2468,#
+        1332,#
+        824,#
+        1072,#
+        1332,#
+        1808,#
+        684,#
+        1452,#
+        1204,#
+        548,#
+        696,#
+        1008,#
+        676,#
+        536,#
+        636,#
+        636,#
+        1084,#
+        1360,#
+        1232,#
+        408,#
+        540,#
+        980,#
+        1160,#
+        1296,#
+        908,#
+        592,#
+        580,#
+        1328,#
+        744,#
+        664,#
+        2380,#
+        672,#
+        800,#
+        580,#
+        1296,#
+        456,#
+        536,#
+        884,#
+        1360,#
+        700,#
+        1204,#
+        672,#
+        788,#
+        608,#
+        1196,#
+        1340,#
+        512,#
+        624,#
+        628,#
+        2320,#
+        1428,#
+        2244,#
+        2156,#
+        1272,#
+        1464,#
+        1432,#
+        812,#
+        1052,#
+        1056,#
+        784,#
+        900,#
+        992,#
+        508,#
+        1620,#
+        1092,#
+        1484,#
+        672,#
+        728,#
+        676,#
+        1308,#
+        648,#
+        608,#
+        1120,#
+        592,#
+        1372,#
+        1300,#
+        864,#
+        1480,#
+        624,#
+        1220,#
+        1308,#
+        752,#
+        1428,#
+        1240,#
+        696,#
+        1100,#
+        440,#
+        1352,#
+        892,#
+        632,#
+        1424,#
+        664,#
+        468,#
+        984,#
+        1776,#
+        2448,#
+        1536,#
+        1012,#
+        1020,#
+        644,#
+        960,#
+        2344,#
+        1364,#
+        368,#
+        732,#
+        1040,#
+        748,#
+        588,#
+        756,#
+        624,#
+        1292,#
+        836,#
+        648,#
+        588,#
+        1324,#
+        604,#
+        1120,#
+        1448,#
+        580,#
+        656,#
+        940,#
+        1168,#
+        1264,#
+        724,#
+        556,#
+        988,#
+        448,#
+        1320,#
+        1436,#
+        1324,#
+        804,#
+        1172,#
+        1196,#
+        1352,#
+        1160,#
+        1100,#
+        1056,#
+        1476,#
+        836,#
+        600,#
+        1376,#
+        1128,#
+        732,#
+        2336,#
+        2340,#
+        1936,#
+        1328,#
+        1312,#
+        1012,#
+        1164,#
+        1412,#
+        1388,#
+        1496,#
+        1164,#
+        1392,#
+        684,#
+        600,#
+        2364,#
+        1176,#
+        272,#
+        1292,#
+        1432,#
+        2196,#
+        1044,#
+        3080,#
+        1496,#
+        812,#
+        992,#
+        1328,#
+        456,#
+        756,#
+        1452,#
+        220,#
+        700,#
+        536,#
+        924,#
+        1332,#
+        744,#
+        544,#
+        1384,#
+        1324,#
+        1208,#
+        2420,#
+        572,#
+        632,#
+        1468,#
+        1432,#
+        656,#
+        924,#
+        2060,#
+        1668,#
+        1220,#
+        1476,#
+        1280,#
+        564,#
+        1432,#
+        704,#
+        1216,#
+        620,#
+        1556,#
+        688,#
+        620,#
+        636,#
+        1392,#
+        1024,#
+        592,#
+        800,#
+        1168,#
+        600,#
+        388,#
+        1424,#
+        1700,#
+        820,#
+        1148,#
+        560,#
+        1060,#
+        708,#
+        620,#
+        464,#
+        2380,#
+        1432,#
+        1392,#
+        2156,#
+        1232,#
+        432,#
+        1680,#
+        1664,#
+        1268,#
+        1320,#
+        732,#
+        1192,#
+        2708,#
+        2048,#
+        1268,#
+        2220,#
+        1380,#
+        444,#
+        2048,#
+        1544,#
+        1604,#
+        620,#
+        1924,#
+        1096,#
+        1028,#
+        508,#
+        808,#
+        864,#
+        2084,#
+        740,#
+        872,#
+        1484,#
+        1340,#
+        1388,#
+        768,#
+        1048,#
+        2356,#
+        1084,#
+        684,#
+        692,#
+        768,#
+        1244,#
+        680,#
+        3056,#
+        1132,#
+        1220,#
+        292,#
+        460,#
+        1024,#
+        1628,#
+        628,#
+        556,#
+        1324,#
+        508,#
+        676,#
+        1528,#
+        2948,#
+        2184,#
+        1320,#
+        872,#
+        1128,#
+        776,#
+        760,#
+        1472,#
+        1712,#
+        272,#
+        748,#
+        1344,#
+        1312,#
+        1148,#
+        2072,#
+        304,#
+        676,#
+        1144,#
+        1008,#
+        712,#
+        700,#
+        1456,#
+        1372,#
+        428,#
+        1260,#
+        1032,#
+        692,#
+        1292,#
+        1288,#
+        1364,#
+        464,#
+        648,#
+        912,#
+        760,#
+        636,#
+        548,#
+        1316,#
+        608,#
+        1376,#
+        1020,#
+        612,#
+        1280,#
+        292,#
+        1340,#
+        1212,#
+        1452,#
+        652,#
+        776,#
+        976,#
+        520,#
+        1672,#
+        1340,#
+        1320,#
+        1036,#
+        628,#
+        396,#
+        1092,#
+        1468,#
+        1084,#
+        1180,#
+        2124,#
+        1188,#
+        256,#
+        488,#
+        1188,#
+        1352,#
+        600,#
+        1224,#
+        1024,#
+        1136,#
+        432,#
+        1112,#
+        1012,#
+        2400,#
+        1264,#
+        1384,#
+        940,#
+        2184,#
+        596,#
+        504,#
+        580,#
+        632,#
+        2140,#
+        1264,#
+        572,#
+        1108,#
+        512,#
+        2260,#
+        716,#
+        720,#
+        2352,#
+        728,#
+        704,#
+        1412,#
+        2436,#
+        940,#
+        424,#
+        632,#
+        588,#
+        280,#
+        1312,#
+        1376,#
+        1268,#
+        1224,#
+        1160,#
+        476,#
+        616,#
+        1416,#
+        1012,#
+        900,#
+        1428,#
+        540,#
+        736,#
+        1432,#
+        800,#
+        888,#
+        1384,#
+        544,#
+        696,#
+        1120,#
+        260,#
+        1316,#
+        836,#
+        884,#
+        2024,#
+        768,#
+        1540,#
+        1040,#
+        1252,#
+        1112,#
+        1452,#
+        1032,#
+        1364,#
+        1464,#
+        2444,#
+        572,#
+        1100,#
+        608,#
+        592,#
+        1984,#
+        1172,#
+        1056,#
+        720,#
+        1200,#
+        588,#
+        536,#
+        568,#
+        604,#
+        780,#
+        3140,#
+        1428,#
+        1632,#
+        2428,#
+        1580,#
+        1324,#
+        1468,#
+        376,#
+        384,#
+        776,#
+        1508,#
+        1140,#
+        916,#
+        984,#
+        472,#
+        1388,#
+        360,#
+        1476,#
+        1432,#
+        596,#
+        640,#
+        2292,#
+        568,#
+        600,#
+        1228,#
+        616,#
+        1308,#
+        1324,#
+        1236,#
+        724,#
+        616,#
+        1236,#
+        1296,#
+        1344,#
+        2084,#
+        580,#
+        440,#
+        632,#
+        1132,#
+        852,#
+        1448,#
+        276,#
+        536,#
+        1068,#
+        300,#
+        788,#
+        1648,#
+        820,#
+        636,#
+        1260,#
+        872,#
+        900,#
+        1404,#
+        684,#
+        1340,#
+        556,#
+        992,#
+        1136,#
+        368,#
+        904,#
+        428,#
+        456,#
+        380,#
+        884,#
+        1072,#
+        752,#
+        284,#
+        1296,#
+        1300,#
+        548,#
+        1564,#
+        2112,#
+        1096,#
+        1392,#
+        1124,#
+        2124,#
+        500,#
+        688,#
+        368,#
+        784,#
+        532,#
+        1304,#
+        564,#
+        1092,#
+        1056,#
+        696,#
+        1420,#
+        572,#
+        1196,#
+        736,#
+        1108,#
+        944,#
+        1040,#
+        1812,#
+        1204,#
+        344,#
+        612,#
+        1312,#
+        628,#
+        676,#
+        1012,#
+        2356,#
+        1328,#
+        768,#
+        1000,#
+        668,#
+        1012,#
+        1328,#
+        572,#
+        932,#
+        332,#
+        944,#
+        1340,#
+        680,#
+        344,#
+        720,#
+        1048,#
+        1360,#
+        1328,#
+        700,#
+        1276,#
+        1520,#
+        1124,#
+        608,#
+        860,#
+        480,#
+        756,#
+        712,#
+        1176,#
+        1812,#
+        408,#
+        784,#
+        680,#
+        1040,#
+        624,#
+        396,#
+        1036,#
+        1052,#
+        1556,#
+        884,#
+        692,#
+        1132,#
+        1416,#
+        1416,#
+        764,#
+        616,#
+        1452,#
+        2784,#
+        768,#
+        892,#
+        888,#
+        1316,#
+        1104,#
+        712,#
+        540,#
+        976,#
+        704,#
+        616,#
+        1364,#
+        288,#
+        816,#
+        1428,#
+        960,#
+        1476,#
+        1372,#
+        1180,#
+        1312,#
+        1272,#
+        936,#
+        880,#
+        980,#
+        412,#
+        600,#
+        784,#
+        548,#
+        1432,#
+        624,#
+        1332,#
+        660,#
+        948,#
+        728,#
+        2324,#
+        816,#
+        1524,#
+        728,#
+        1640,#
+        1184,#
+        1280,#
+        1380,#
+        668,#
+        336,#
+        572,#
+        1176,#
+        1408,#
+        1012,#
+        1324,#
+        628,#
+        1012,#
+        984,#
+        2860,#
+        1016,#
+        316,#
+        2064,#
+        280,#
+        1376,#
+        1612,#
+        348,#
+        1692,#
+        1004,#
+        1248,#
+        656,#
+        1212,#
+        1836,#
+        2372,#
+        1172,#
+        856,#
+        940,#
+        1372,#
+        636,#
+        472,#
+        1404,#
+        340,#
+        600,#
+        960,#
+        688,#
+        556,#
+        1568,#
+        1296,#
+        716,#
+        1188,#
+        1384,#
+        504,#
+        1468,#
+        1296,#
+        928,#
+        2504,#
+        732,#
+        1152,#
+        1148,#
+        900,#
+        972,#
+        1320,#
+        1012,#
+        1680,#
+        1140,#
+        376,#
+        1400,#
+        404,#
+        704,#
+        568,#
+        1360,#
+        584,#
+        540,#
+        976,#
+        1172,#
+        436,#
+        968,#
+        512,#
+        1104,#
+        604,#
+        1336,#
+        1436,#
+        2748,#
+        852,#
+        852,#
+        796,#
+        488,#
+        1008,#
+        708,#
+        2132,#
+        1424,#
+        1344,#
+        940,#
+        2724,#
+        1420,#
+        868,#
+        1204,#
+        544,#
+        1156,#
+        648,#
+        1340,#
+        944,#
+        1324,#
+        584,#
+        1328,#
+        668,#
+        2032,#
+        604,#
+        772,#
+        592,#
+        2344,#
+        628,#
+        2264,#
+        932,#
+        888,#
+        744,#
+        1668,#
+        1248,#
+        708,#
+        824,#
+        1452,#
+        1220,#
+        1424,#
+        1264,#
+        300,#
+        408,#
+        696,#
+        624,#
+        676,#
+        1352,#
+        1048,#
+        1320,#
+        700,#
+        1072,#
+        684,#
+        212,#
+        1052,#
+        1380,#
+        380,#
+        168,#
+        1024,#
+        984,#
+        1992,#
+        740,#
+        792,#
+        1036,#
+        440,#
+        1368,#
+        1364,#
+        540,#
+        996,#
+        1248,#
+        1120,#
+        1468,#
+        708,#
+        580,#
+        544,#
+        652,#
+        480,#
+        580,#
+        1016,#
+        1108,#
+        640,#
+        1396,#
+        504,#
+        680,#
+        560,#
+        1412,#
+        1412,#
+        2456,#
+        704,#
+        1048,#
+        1304,#
+        656,#
+        1312,#
+        1500,#
+        740,#
+        392,#
+        1332,#
+        240,#
+        1100,#
+        872,#
+        632,#
+        704,#
+        1176,#
+        1708,#
+        1240,#
+        1396,#
+        468,#
+        1512#
+    ],#
+    "reward": [],#
+    "highest": [#
+        128,#
+        128,#
+        64,#
+        128,#
+        128,#
+        128,#
+        64,#
+        128,#
+        64,#
+        128,#
+        256,#
+        64,#
+        64,#
+        128,#
+        128,#
+        64,#
+        128,#
+        64,#
+        64,#
+        128,#
+        64,#
+        64,#
+        64,#
+        128,#
+        128,#
+        32,#
+        256,#
+        256,#
+        64,#
+        128,#
+        128,#
+        32,#
+        64,#
+        128,#
+        256,#
+        64,#
+        128,#
+        64,#
+        256,#
+        128,#
+        128,#
+        128,#
+        64,#
+        128,#
+        128,#
+        128,#
+        128,#
+        64,#
+        128,#
+        128,#
+        64,#
+        128,#
+        128,#
+        64,#
+        32,#
+        64,#
+        64,#
+        64,#
+        256,#
+        128,#
+        128,#
+        128,#
+        128,#
+        64,#
+        128,#
+        64,#
+        64,#
+        64,#
+        128,#
+        128,#
+        128,#
+        128,#
+        128,#
+        64,#
+        128,#
+        128,#
+        128,#
+        128,#
+        128,#
+        128,#
+        128,#
+        128,#
+        64,#
+        128,#
+        64,#
+        256,#
+        256,#
+        64,#
+        128,#
+        128,#
+        32,#
+        128,#
+        128,#
+        64,#
+        64,#
+        128,#
+        128,#
+        64,#
+        32,#
+        128,#
+        256,#
+        32,#
+        128,#
+        128,#
+        256,#
+        128,#
+        64,#
+        64,#
+        64,#
+        128,#
+        256,#
+        64,#
+        64,#
+        128,#
+        64,#
+        64,#
+        128,#
+        256,#
+        128,#
+        64,#
+        128,#
+        128,#
+        128,#
+        64,#
+        128,#
+        128,#
+        128,#
+        64,#
+        128,#
+        64,#
+        128,#
+        128,#
+        64,#
+        128,#
+        128,#
+        64,#
+        64,#
+        64,#
+        128,#
+        64,#
+        128,#
+        128,#
+        64,#
+        64,#
+        128,#
+        64,#
+        128,#
+        128,#
+        128,#
+        32,#
+        128,#
+        32,#
+        128,#
+        128,#
+        32,#
+        256,#
+        128,#
+        64,#
+        64,#
+        64,#
+        64,#
+        64,#
+        128,#
+        128,#
+        64,#
+        64,#
+        128,#
+        32,#
+        128,#
+        64,#
+        128,#
+        128,#
+        256,#
+        64,#
+        128,#
+        128,#
+        256,#
+        128,#
+        128,#
+        64,#
+        128,#
+        128,#
+        128,#
+        64,#
+        32,#
+        128,#
+        128,#
+        128,#
+        128,#
+        256,#
+        64,#
+        256,#
+        64,#
+        128,#
+        128,#
+        128,#
+        64,#
+        64,#
+        64,#
+        128,#
+        128,#
+        64,#
+        128,#
+        128,#
+        64,#
+        128,#
+        256,#
+        128,#
+        64,#
+        128,#
+        128,#
+        128,#
+        64,#
+        128,#
+        128,#
+        64,#
+        64,#
+        64,#
+        64,#
+        64,#
+        64,#
+        64,#
+        128,#
+        128,#
+        128,#
+        32,#
+        64,#
+        64,#
+        128,#
+        128,#
+        64,#
+        64,#
+        64,#
+        128,#
+        64,#
+        64,#
+        256,#
+        64,#
+        64,#
+        64,#
+        128,#
+        64,#
+        64,#
+        64,#
+        128,#
+        64,#
+        128,#
+        64,#
+        64,#
+        64,#
+        128,#
+        128,#
+        64,#
+        64,#
+        64,#
+        256,#
+        128,#
+        256,#
+        256,#
+        128,#
+        128,#
+        128,#
+        64,#
+        128,#
+        128,#
+        64,#
+        128,#
+        128,#
+        64,#
+        128,#
+        128,#
+        128,#
+        64,#
+        64,#
+        64,#
+        128,#
+        64,#
+        64,#
+        128,#
+        64,#
+        128,#
+        128,#
+        64,#
+        128,#
+        64,#
+        128,#
+        128,#
+        64,#
+        128,#
+        128,#
+        64,#
+        128,#
+        64,#
+        128,#
+        64,#
+        64,#
+        128,#
+        64,#
+        32,#
+        128,#
+        128,#
+        256,#
+        128,#
+        128,#
+        128,#
+        64,#
+        64,#
+        256,#
+        128,#
+        32,#
+        64,#
+        128,#
+        64,#
+        64,#
+        64,#
+        64,#
+        128,#
+        64,#
+        64,#
+        64,#
+        128,#
+        64,#
+        64,#
+        128,#
+        64,#
+        64,#
+        64,#
+        128,#
+        128,#
+        64,#
+        64,#
+        128,#
+        64,#
+        128,#
+        128,#
+        128,#
+        64,#
+        128,#
+        128,#
+        128,#
+        128,#
+        128,#
+        128,#
+        128,#
+        64,#
+        64,#
+        128,#
+        128,#
+        64,#
+        256,#
+        256,#
+        256,#
+        128,#
+        128,#
+        128,#
+        128,#
+        128,#
+        128,#
+        128,#
+        128,#
+        128,#
+        64,#
+        64,#
+        256,#
+        128,#
+        32,#
+        128,#
+        128,#
+        256,#
+        128,#
+        256,#
+        128,#
+        64,#
+        128,#
+        128,#
+        64,#
+        64,#
+        128,#
+        32,#
+        64,#
+        64,#
+        64,#
+        128,#
+        64,#
+        64,#
+        128,#
+        128,#
+        128,#
+        256,#
+        64,#
+        64,#
+        128,#
+        128,#
+        64,#
+        128,#
+        256,#
+        128,#
+        128,#
+        128,#
+        128,#
+        64,#
+        128,#
+        64,#
+        128,#
+        64,#
+        128,#
+        64,#
+        64,#
+        64,#
+        128,#
+        128,#
+        64,#
+        64,#
+        128,#
+        64,#
+        32,#
+        128,#
+        128,#
+        64,#
+        128,#
+        64,#
+        128,#
+        64,#
+        64,#
+        64,#
+        256,#
+        128,#
+        128,#
+        256,#
+        128,#
+        32,#
+        128,#
+        128,#
+        128,#
+        128,#
+        64,#
+        128,#
+        256,#
+        256,#
+        128,#
+        256,#
+        128,#
+        32,#
+        256,#
+        128,#
+        128,#
+        64,#
+        128,#
+        128,#
+        128,#
+        64,#
+        64,#
+        64,#
+        256,#
+        64,#
+        64,#
+        128,#
+        128,#
+        128,#
+        64,#
+        128,#
+        256,#
+        64,#
+        64,#
+        64,#
+        64,#
+        128,#
+        64,#
+        256,#
+        128,#
+        128,#
+        32,#
+        64,#
+        128,#
+        128,#
+        64,#
+        64,#
+        128,#
+        64,#
+        64,#
+        128,#
+        256,#
+        256,#
+        128,#
+        64,#
+        128,#
+        64,#
+        64,#
+        128,#
+        128,#
+        32,#
+        64,#
+        128,#
+        128,#
+        128,#
+        256,#
+        32,#
+        64,#
+        128,#
+        64,#
+        64,#
+        64,#
+        128,#
+        128,#
+        32,#
+        128,#
+        128,#
+        64,#
+        128,#
+        128,#
+        128,#
+        64,#
+        64,#
+        128,#
+        64,#
+        64,#
+        64,#
+        128,#
+        64,#
+        128,#
+        128,#
+        64,#
+        128,#
+        32,#
+        128,#
+        128,#
+        128,#
+        64,#
+        64,#
+        128,#
+        64,#
+        128,#
+        128,#
+        128,#
+        128,#
+        64,#
+        32,#
+        128,#
+        128,#
+        128,#
+        128,#
+        256,#
+        128,#
+        32,#
+        64,#
+        128,#
+        128,#
+        64,#
+        128,#
+        128,#
+        128,#
+        32,#
+        128,#
+        128,#
+        256,#
+        128,#
+        128,#
+        64,#
+        128,#
+        64,#
+        64,#
+        64,#
+        64,#
+        256,#
+        128,#
+        64,#
+        128,#
+        64,#
+        256,#
+        64,#
+        64,#
+        256,#
+        64,#
+        64,#
+        128,#
+        256,#
+        64,#
+        32,#
+        64,#
+        64,#
+        32,#
+        128,#
+        128,#
+        128,#
+        128,#
+        128,#
+        32,#
+        64,#
+        128,#
+        128,#
+        128,#
+        128,#
+        64,#
+        64,#
+        128,#
+        64,#
+        64,#
+        128,#
+        64,#
+        64,#
+        128,#
+        32,#
+        128,#
+        64,#
+        64,#
+        256,#
+        64,#
+        128,#
+        128,#
+        128,#
+        128,#
+        128,#
+        128,#
+        128,#
+        128,#
+        256,#
+        64,#
+        128,#
+        64,#
+        64,#
+        256,#
+        128,#
+        128,#
+        64,#
+        128,#
+        64,#
+        64,#
+        64,#
+        64,#
+        64,#
+        256,#
+        128,#
+        128,#
+        256,#
+        128,#
+        128,#
+        128,#
+        32,#
+        32,#
+        64,#
+        128,#
+        128,#
+        64,#
+        64,#
+        64,#
+        128,#
+        32,#
+        128,#
+        128,#
+        64,#
+        64,#
+        256,#
+        64,#
+        64,#
+        128,#
+        64,#
+        128,#
+        128,#
+        128,#
+        64,#
+        64,#
+        128,#
+        128,#
+        128,#
+        256,#
+        64,#
+        64,#
+        64,#
+        128,#
+        64,#
+        128,#
+        32,#
+        64,#
+        128,#
+        32,#
+        64,#
+        128,#
+        64,#
+        64,#
+        128,#
+        64,#
+        64,#
+        128,#
+        64,#
+        128,#
+        64,#
+        64,#
+        128,#
+        32,#
+        64,#
+        32,#
+        32,#
+        32,#
+        64,#
+        128,#
+        64,#
+        32,#
+        128,#
+        128,#
+        64,#
+        128,#
+        256,#
+        128,#
+        128,#
+        128,#
+        256,#
+        32,#
+        64,#
+        32,#
+        64,#
+        64,#
+        128,#
+        64,#
+        128,#
+        128,#
+        64,#
+        128,#
+        64,#
+        128,#
+        64,#
+        128,#
+        64,#
+        128,#
+        128,#
+        128,#
+        32,#
+        64,#
+        128,#
+        64,#
+        64,#
+        128,#
+        256,#
+        128,#
+        64,#
+        128,#
+        64,#
+        128,#
+        128,#
+        64,#
+        64,#
+        32,#
+        128,#
+        128,#
+        64,#
+        32,#
+        64,#
+        128,#
+        128,#
+        128,#
+        64,#
+        128,#
+        128,#
+        128,#
+        64,#
+        64,#
+        32,#
+        64,#
+        64,#
+        64,#
+        128,#
+        32,#
+        64,#
+        64,#
+        128,#
+        64,#
+        32,#
+        128,#
+        128,#
+        128,#
+        64,#
+        64,#
+        128,#
+        128,#
+        128,#
+        64,#
+        64,#
+        128,#
+        256,#
+        64,#
+        64,#
+        128,#
+        128,#
+        128,#
+        64,#
+        64,#
+        128,#
+        64,#
+        64,#
+        128,#
+        32,#
+        64,#
+        128,#
+        64,#
+        128,#
+        128,#
+        128,#
+        128,#
+        128,#
+        128,#
+        128,#
+        128,#
+        32,#
+        64,#
+        64,#
+        64,#
+        128,#
+        64,#
+        128,#
+        64,#
+        64,#
+        64,#
+        256,#
+        64,#
+        128,#
+        64,#
+        128,#
+        128,#
+        128,#
+        128,#
+        64,#
+        32,#
+        64,#
+        128,#
+        128,#
+        128,#
+        128,#
+        64,#
+        128,#
+        64,#
+        256,#
+        128,#
+        32,#
+        256,#
+        32,#
+        128,#
+        128,#
+        32,#
+        128,#
+        128,#
+        128,#
+        64,#
+        128,#
+        128,#
+        256,#
+        128,#
+        64,#
+        64,#
+        128,#
+        64,#
+        64,#
+        128,#
+        32,#
+        64,#
+        128,#
+        64,#
+        64,#
+        128,#
+        128,#
+        64,#
+        128,#
+        128,#
+        32,#
+        128,#
+        128,#
+        128,#
+        256,#
+        64,#
+        128,#
+        64,#
+        64,#
+        128,#
+        128,#
+        64,#
+        128,#
+        128,#
+        32,#
+        128,#
+        32,#
+        64,#
+        64,#
+        128,#
+        64,#
+        32,#
+        128,#
+        128,#
+        32,#
+        64,#
+        64,#
+        64,#
+        64,#
+        128,#
+        128,#
+        256,#
+        64,#
+        64,#
+        64,#
+        64,#
+        128,#
+        64,#
+        256,#
+        128,#
+        128,#
+        64,#
+        256,#
+        128,#
+        64,#
+        128,#
+        64,#
+        128,#
+        64,#
+        128,#
+        64,#
+        128,#
+        64,#
+        128,#
+        64,#
+        256,#
+        64,#
+        64,#
+        64,#
+        256,#
+        64,#
+        256,#
+        64,#
+        64,#
+        64,#
+        128,#
+        128,#
+        64,#
+        64,#
+        128,#
+        128,#
+        128,#
+        128,#
+        32,#
+        32,#
+        64,#
+        64,#
+        64,#
+        128,#
+        128,#
+        128,#
+        64,#
+        128,#
+        64,#
+        32,#
+        128,#
+        128,#
+        32,#
+        16,#
+        128,#
+        64,#
+        256,#
+        64,#
+        64,#
+        128,#
+        32,#
+        128,#
+        128,#
+        64,#
+        128,#
+        128,#
+        128,#
+        128,#
+        64,#
+        64,#
+        64,#
+        64,#
+        64,#
+        64,#
+        128,#
+        64,#
+        64,#
+        128,#
+        32,#
+        64,#
+        64,#
+        128,#
+        128,#
+        256,#
+        64,#
+        128,#
+        128,#
+        64,#
+        128,#
+        128,#
+        64,#
+        32,#
+        128,#
+        32,#
+        128,#
+        64,#
+        64,#
+        64,#
+        128,#
+        128,#
+        128,#
+        128,#
+        64,#
+        128#
+    ],#
+    "moves": [#
+        124,#
+        195,#
+        85,#
+        148,#
+        157,#
+        163,#
+        119,#
+        161,#
+        119,#
+        163,#
+        222,#
+        98,#
+        113,#
+        142,#
+        179,#
+        108,#
+        133,#
+        137,#
+        123,#
+        165,#
+        91,#
+        138,#
+        90,#
+        145,#
+        143,#
+        81,#
+        285,#
+        249,#
+        107,#
+        194,#
+        224,#
+        81,#
+        78,#
+        169,#
+        308,#
+        98,#
+        177,#
+        121,#
+        242,#
+        137,#
+        170,#
+        140,#
+        124,#
+        160,#
+        165,#
+        122,#
+        119,#
+        108,#
+        243,#
+        167,#
+        106,#
+        186,#
+        156,#
+        131,#
+        74,#
+        143,#
+        120,#
+        136,#
+        234,#
+        203,#
+        172,#
+        195,#
+        164,#
+        100,#
+        164,#
+        81,#
+        111,#
+        89,#
+        199,#
+        179,#
+        188,#
+        169,#
+        172,#
+        114,#
+        158,#
+        147,#
+        184,#
+        194,#
+        161,#
+        181,#
+        166,#
+        156,#
+        86,#
+        193,#
+        107,#
+        242,#
+        324,#
+        120,#
+        166,#
+        157,#
+        71,#
+        153,#
+        156,#
+        118,#
+        118,#
+        131,#
+        175,#
+        129,#
+        103,#
+        138,#
+        276,#
+        81,#
+        149,#
+        153,#
+        257,#
+        175,#
+        108,#
+        95,#
+        125,#
+        166,#
+        241,#
+        104,#
+        84,#
+        136,#
+        133,#
+        92,#
+        174,#
+        286,#
+        149,#
+        132,#
+        207,#
+        167,#
+        136,#
+        80,#
+        148,#
+        169,#
+        164,#
+        149,#
+        120,#
+        101,#
+        155,#
+        153,#
+        118,#
+        118,#
+        169,#
+        104,#
+        101,#
+        111,#
+        157,#
+        101,#
+        206,#
+        155,#
+        110,#
+        101,#
+        172,#
+        97,#
+        166,#
+        179,#
+        150,#
+        63,#
+        153,#
+        67,#
+        212,#
+        132,#
+        72,#
+        207,#
+        193,#
+        108,#
+        99,#
+        151,#
+        94,#
+        96,#
+        161,#
+        133,#
+        123,#
+        125,#
+        166,#
+        58,#
+        177,#
+        110,#
+        212,#
+        151,#
+        208,#
+        94,#
+        163,#
+        135,#
+        249,#
+        179,#
+        158,#
+        105,#
+        136,#
+        104,#
+        144,#
+        94,#
+        69,#
+        154,#
+        154,#
+        169,#
+        183,#
+        281,#
+        89,#
+        278,#
+        101,#
+        171,#
+        145,#
+        226,#
+        119,#
+        120,#
+        146,#
+        154,#
+        160,#
+        91,#
+        183,#
+        133,#
+        130,#
+        203,#
+        260,#
+        161,#
+        120,#
+        126,#
+        175,#
+        204,#
+        118,#
+        177,#
+        148,#
+        90,#
+        105,#
+        157,#
+        103,#
+        103,#
+        105,#
+        106,#
+        145,#
+        168,#
+        161,#
+        67,#
+        88,#
+        135,#
+        167,#
+        164,#
+        130,#
+        94,#
+        93,#
+        162,#
+        115,#
+        95,#
+        251,#
+        102,#
+        127,#
+        93,#
+        143,#
+        86,#
+        86,#
+        115,#
+        171,#
+        103,#
+        142,#
+        110,#
+        117,#
+        98,#
+        145,#
+        171,#
+        88,#
+        93,#
+        94,#
+        233,#
+        168,#
+        216,#
+        224,#
+        150,#
+        183,#
+        179,#
+        112,#
+        124,#
+        140,#
+        141,#
+        101,#
+        142,#
+        85,#
+        188,#
+        142,#
+        191,#
+        101,#
+        97,#
+        110,#
+        161,#
+        93,#
+        104,#
+        140,#
+        101,#
+        175,#
+        168,#
+        114,#
+        182,#
+        108,#
+        136,#
+        147,#
+        114,#
+        179,#
+        163,#
+        111,#
+        138,#
+        69,#
+        183,#
+        122,#
+        109,#
+        162,#
+        103,#
+        75,#
+        122,#
+        223,#
+        245,#
+        214,#
+        122,#
+        121,#
+        112,#
+        131,#
+        236,#
+        155,#
+        72,#
+        105,#
+        134,#
+        140,#
+        94,#
+        117,#
+        96,#
+        159,#
+        130,#
+        103,#
+        88,#
+        158,#
+        94,#
+        153,#
+        207,#
+        93,#
+        107,#
+        125,#
+        155,#
+        140,#
+        119,#
+        97,#
+        116,#
+        72,#
+        157,#
+        167,#
+        176,#
+        116,#
+        135,#
+        167,#
+        158,#
+        153,#
+        153,#
+        136,#
+        182,#
+        114,#
+        88,#
+        169,#
+        139,#
+        105,#
+        273,#
+        237,#
+        199,#
+        173,#
+        159,#
+        131,#
+        154,#
+        180,#
+        168,#
+        189,#
+        148,#
+        181,#
+        105,#
+        99,#
+        246,#
+        147,#
+        55,#
+        149,#
+        162,#
+        236,#
+        125,#
+        286,#
+        181,#
+        113,#
+        118,#
+        157,#
+        81,#
+        114,#
+        177,#
+        47,#
+        99,#
+        81,#
+        131,#
+        173,#
+        118,#
+        83,#
+        180,#
+        156,#
+        141,#
+        246,#
+        90,#
+        100,#
+        185,#
+        172,#
+        110,#
+        107,#
+        224,#
+        199,#
+        147,#
+        191,#
+        150,#
+        92,#
+        185,#
+        108,#
+        142,#
+        96,#
+        161,#
+        111,#
+        94,#
+        100,#
+        178,#
+        139,#
+        95,#
+        120,#
+        133,#
+        99,#
+        77,#
+        170,#
+        181,#
+        121,#
+        144,#
+        84,#
+        131,#
+        101,#
+        98,#
+        81,#
+        266,#
+        163,#
+        177,#
+        223,#
+        159,#
+        91,#
+        228,#
+        223,#
+        163,#
+        157,#
+        114,#
+        141,#
+        257,#
+        201,#
+        168,#
+        233,#
+        164,#
+        97,#
+        196,#
+        173,#
+        204,#
+        106,#
+        223,#
+        132,#
+        126,#
+        87,#
+        125,#
+        113,#
+        212,#
+        125,#
+        125,#
+        209,#
+        191,#
+        170,#
+        121,#
+        132,#
+        234,#
+        149,#
+        95,#
+        107,#
+        108,#
+        159,#
+        106,#
+        291,#
+        149,#
+        144,#
+        60,#
+        76,#
+        128,#
+        190,#
+        100,#
+        85,#
+        160,#
+        77,#
+        117,#
+        185,#
+        293,#
+        221,#
+        170,#
+        118,#
+        140,#
+        126,#
+        109,#
+        198,#
+        207,#
+        62,#
+        115,#
+        172,#
+        148,#
+        145,#
+        197,#
+        62,#
+        112,#
+        129,#
+        132,#
+        129,#
+        123,#
+        168,#
+        173,#
+        81,#
+        146,#
+        127,#
+        107,#
+        175,#
+        150,#
+        162,#
+        66,#
+        108,#
+        115,#
+        122,#
+        97,#
+        91,#
+        152,#
+        101,#
+        168,#
+        150,#
+        93,#
+        170,#
+        69,#
+        159,#
+        154,#
+        199,#
+        114,#
+        123,#
+        122,#
+        87,#
+        200,#
+        168,#
+        156,#
+        140,#
+        102,#
+        73,#
+        144,#
+        181,#
+        136,#
+        155,#
+        204,#
+        135,#
+        55,#
+        76,#
+        156,#
+        155,#
+        97,#
+        149,#
+        129,#
+        144,#
+        79,#
+        148,#
+        124,#
+        244,#
+        153,#
+        174,#
+        145,#
+        236,#
+        95,#
+        83,#
+        89,#
+        106,#
+        206,#
+        148,#
+        93,#
+        140,#
+        89,#
+        221,#
+        107,#
+        110,#
+        229,#
+        106,#
+        104,#
+        174,#
+        234,#
+        126,#
+        92,#
+        94,#
+        97,#
+        59,#
+        145,#
+        166,#
+        145,#
+        149,#
+        158,#
+        79,#
+        107,#
+        170,#
+        134,#
+        111,#
+        166,#
+        85,#
+        116,#
+        168,#
+        107,#
+        125,#
+        185,#
+        100,#
+        109,#
+        136,#
+        55,#
+        168,#
+        121,#
+        122,#
+        196,#
+        111,#
+        195,#
+        144,#
+        169,#
+        147,#
+        181,#
+        128,#
+        168,#
+        168,#
+        272,#
+        98,#
+        146,#
+        105,#
+        96,#
+        199,#
+        158,#
+        132,#
+        100,#
+        157,#
+        98,#
+        95,#
+        85,#
+        99,#
+        101,#
+        351,#
+        179,#
+        194,#
+        229,#
+        188,#
+        151,#
+        190,#
+        73,#
+        70,#
+        112,#
+        195,#
+        133,#
+        119,#
+        151,#
+        77,#
+        167,#
+        78,#
+        180,#
+        165,#
+        107,#
+        91,#
+        220,#
+        106,#
+        104,#
+        147,#
+        97,#
+        163,#
+        150,#
+        154,#
+        108,#
+        93,#
+        153,#
+        150,#
+        184,#
+        192,#
+        89,#
+        75,#
+        96,#
+        151,#
+        127,#
+        180,#
+        61,#
+        89,#
+        122,#
+        60,#
+        120,#
+        198,#
+        110,#
+        86,#
+        147,#
+        138,#
+        121,#
+        179,#
+        98,#
+        165,#
+        81,#
+        153,#
+        153,#
+        79,#
+        131,#
+        81,#
+        77,#
+        73,#
+        127,#
+        143,#
+        113,#
+        63,#
+        165,#
+        160,#
+        81,#
+        198,#
+        211,#
+        127,#
+        172,#
+        131,#
+        211,#
+        91,#
+        106,#
+        72,#
+        121,#
+        84,#
+        155,#
+        86,#
+        138,#
+        127,#
+        101,#
+        169,#
+        91,#
+        171,#
+        124,#
+        147,#
+        134,#
+        136,#
+        201,#
+        149,#
+        62,#
+        95,#
+        147,#
+        102,#
+        108,#
+        124,#
+        254,#
+        150,#
+        121,#
+        115,#
+        109,#
+        127,#
+        156,#
+        88,#
+        138,#
+        61,#
+        128,#
+        165,#
+        105,#
+        65,#
+        101,#
+        124,#
+        183,#
+        160,#
+        101,#
+        148,#
+        187,#
+        138,#
+        99,#
+        118,#
+        88,#
+        112,#
+        113,#
+        153,#
+        203,#
+        84,#
+        113,#
+        102,#
+        136,#
+        99,#
+        76,#
+        144,#
+        128,#
+        195,#
+        138,#
+        102,#
+        139,#
+        202,#
+        173,#
+        120,#
+        98,#
+        200,#
+        283,#
+        123,#
+        130,#
+        116,#
+        159,#
+        134,#
+        107,#
+        81,#
+        111,#
+        107,#
+        106,#
+        196,#
+        65,#
+        132,#
+        193,#
+        128,#
+        164,#
+        154,#
+        151,#
+        154,#
+        146,#
+        118,#
+        109,#
+        126,#
+        78,#
+        107,#
+        124,#
+        85,#
+        184,#
+        98,#
+        153,#
+        99,#
+        140,#
+        100,#
+        233,#
+        120,#
+        181,#
+        119,#
+        194,#
+        151,#
+        172,#
+        176,#
+        98,#
+        67,#
+        91,#
+        165,#
+        202,#
+        152,#
+        155,#
+        104,#
+        128,#
+        156,#
+        288,#
+        135,#
+        64,#
+        198,#
+        60,#
+        173,#
+        208,#
+        74,#
+        196,#
+        119,#
+        130,#
+        98,#
+        146,#
+        255,#
+        249,#
+        142,#
+        123,#
+        133,#
+        184,#
+        109,#
+        76,#
+        177,#
+        64,#
+        93,#
+        120,#
+        113,#
+        84,#
+        204,#
+        153,#
+        119,#
+        150,#
+        173,#
+        85,#
+        176,#
+        140,#
+        113,#
+        265,#
+        112,#
+        153,#
+        165,#
+        131,#
+        118,#
+        156,#
+        155,#
+        191,#
+        149,#
+        79,#
+        172,#
+        79,#
+        101,#
+        100,#
+        157,#
+        87,#
+        92,#
+        123,#
+        150,#
+        84,#
+        135,#
+        90,#
+        164,#
+        100,#
+        161,#
+        185,#
+        256,#
+        133,#
+        131,#
+        116,#
+        76,#
+        123,#
+        120,#
+        216,#
+        179,#
+        156,#
+        126,#
+        293,#
+        182,#
+        128,#
+        157,#
+        82,#
+        145,#
+        106,#
+        172,#
+        136,#
+        162,#
+        87,#
+        150,#
+        121,#
+        211,#
+        91,#
+        123,#
+        99,#
+        245,#
+        107,#
+        218,#
+        129,#
+        127,#
+        116,#
+        176,#
+        146,#
+        111,#
+        112,#
+        180,#
+        145,#
+        166,#
+        170,#
+        60,#
+        72,#
+        109,#
+        106,#
+        111,#
+        156,#
+        121,#
+        166,#
+        124,#
+        135,#
+        113,#
+        49,#
+        121,#
+        169,#
+        80,#
+        47,#
+        130,#
+        134,#
+        179,#
+        124,#
+        114,#
+        131,#
+        86,#
+        171,#
+        162,#
+        95,#
+        133,#
+        143,#
+        137,#
+        186,#
+        122,#
+        90,#
+        91,#
+        104,#
+        77,#
+        107,#
+        135,#
+        155,#
+        111,#
+        170,#
+        88,#
+        130,#
+        98,#
+        167,#
+        170,#
+        263,#
+        124,#
+        149,#
+        156,#
+        125,#
+        153,#
+        178,#
+        108,#
+        81,#
+        158,#
+        67,#
+        140,#
+        123,#
+        94,#
+        108,#
+        153,#
+        203,#
+        162,#
+        181,#
+        76,#
+        204#
+    ]#
+}";
+json <- "{ "score": [ 1012, 1640, 460, 1272, 1356, 1360, 720, 1332, 764, 1392, 2192, 560, 740, 1204, 1500, 596, 1128, 924, 792, 1356, 588, 872, 604, 1088, 1168, 428, 2996, 2392, 596, 1452, 1740, 428, 516, 1268, 3188, 636, 1476, 704, 2528, 1020, 1384, 1128, 880, 1352, 1380, 1004, 1052, 588, 2148, 1424, 704, 1472, 1296, 772, 388, 1068, 720, 932, 2200, 1532, 1484, 1492, 1208, 600, 1328, 492, 704, 528, 1652, 1452, 1528, 1252, 1376, 724, 1296, 1072, 1496, 1528, 1308, 1456, 1280, 1356, 620, 1424, 704, 2308, 3100, 736, 1340, 1312, 332, 1232, 1236, 696, 740, 992, 1536, 936, 412, 1136, 2468, 492, 1244, 1040, 2520, 1384, 664, 584, 936, 1376, 2452, 752, 572, 1056, 896, 572, 1360, 2848, 1204, 896, 1728, 1332, 1052, 524, 1224, 1304, 1412, 984, 900, 740, 1232, 1176, 620, 972, 1388, 688, 684, 784, 1320, 620, 1644, 1116, 808, 620, 1328, 652, 1328, 1632, 1112, 316, 1296, 284, 1560, 1048, 356, 2112, 1588, 728, 608, 1004, 620, 580, 1352, 1048, 728, 1076, 1396, 292, 1332, 748, 1708, 1072, 2080, 672, 1396, 1020, 2660, 1456, 128
+0, 628, 1104, 880, 1080, 652, 364, 1300, 1268, 1376, 1472, 2732, 604, 3028, 696, 1320, 1124, 2060, 660, 728, 980, 1288, 1304, 644, 1416, 1088, 964, 1612, 2468, 1332, 824, 1072, 1332, 1808, 684, 1452, 1204, 548, 696, 1008, 676, 536, 636, 636, 1084, 1360, 1232, 408, 540, 980, 1160, 1296, 908, 592, 580, 1328, 744, 664, 2380, 672, 800, 580, 1296, 456, 536, 884, 1360, 700, 1204, 672, 788, 608, 1196, 1340, 512, 624, 628, 2320, 1428, 2244, 2156, 1272, 1464, 1432, 812, 1052, 1056, 784, 900, 992, 508, 1620, 1092, 1484, 672, 728, 676, 1308, 648, 608, 1120, 592, 1372, 1300, 864, 1480, 624, 1220, 1308, 752, 1428, 1240, 696, 1100, 440, 1352, 892, 632, 1424, 664, 468, 984, 1776, 2448, 1536, 1012, 1020, 644, 960, 2344, 1364, 368, 732, 1040, 748, 588, 756, 624, 1292, 836, 648, 588, 1324, 604, 1120, 1448, 580, 656, 940, 1168, 1264, 724, 556, 988, 448, 1320, 1436, 1324, 804, 1172, 1196, 1352, 1160, 1100, 1056, 1476, 836, 600, 1376, 1128, 732, 2336, 2340, 1936, 1328, 1312, 1012, 1164, 1412, 1388, 1496, 1164, 1392, 684, 600, 2
+364, 1176, 272, 1292, 1432, 2196, 1044, 3080, 1496, 812, 992, 1328, 456, 756, 1452, 220, 700, 536, 924, 1332, 744, 544, 1384, 1324, 1208, 2420, 572, 632, 1468, 1432, 656, 924, 2060, 1668, 1220, 1476, 1280, 564, 1432, 704, 1216, 620, 1556, 688, 620, 636, 1392, 1024, 592, 800, 1168, 600, 388, 1424, 1700, 820, 1148, 560, 1060, 708, 620, 464, 2380, 1432, 1392, 2156, 1232, 432, 1680, 1664, 1268, 1320, 732, 1192, 2708, 2048, 1268, 2220, 1380, 444, 2048, 1544, 1604, 620, 1924, 1096, 1028, 508, 808, 864, 2084, 740, 872, 1484, 1340, 1388, 768, 1048, 2356, 1084, 684, 692, 768, 1244, 680, 3056, 1132, 1220, 292, 460, 1024, 1628, 628, 556, 1324, 508, 676, 1528, 2948, 2184, 1320, 872, 1128, 776, 760, 1472, 1712, 272, 748, 1344, 1312, 1148, 2072, 304, 676, 1144, 1008, 712, 700, 1456, 1372, 428, 1260, 1032, 692, 1292, 1288, 1364, 464, 648, 912, 760, 636, 548, 1316, 608, 1376, 1020, 612, 1280, 292, 1340, 1212, 1452, 652, 776, 976, 520, 1672, 1340, 1320, 1036, 628, 396, 1092, 1468, 1084, 1180, 2124, 1188, 256, 488, 1188, 135
+2, 600, 1224, 1024, 1136, 432, 1112, 1012, 2400, 1264, 1384, 940, 2184, 596, 504, 580, 632, 2140, 1264, 572, 1108, 512, 2260, 716, 720, 2352, 728, 704, 1412, 2436, 940, 424, 632, 588, 280, 1312, 1376, 1268, 1224, 1160, 476, 616, 1416, 1012, 900, 1428, 540, 736, 1432, 800, 888, 1384, 544, 696, 1120, 260, 1316, 836, 884, 2024, 768, 1540, 1040, 1252, 1112, 1452, 1032, 1364, 1464, 2444, 572, 1100, 608, 592, 1984, 1172, 1056, 720, 1200, 588, 536, 568, 604, 780, 3140, 1428, 1632, 2428, 1580, 1324, 1468, 376, 384, 776, 1508, 1140, 916, 984, 472, 1388, 360, 1476, 1432, 596, 640, 2292, 568, 600, 1228, 616, 1308, 1324, 1236, 724, 616, 1236, 1296, 1344, 2084, 580, 440, 632, 1132, 852, 1448, 276, 536, 1068, 300, 788, 1648, 820, 636, 1260, 872, 900, 1404, 684, 1340, 556, 992, 1136, 368, 904, 428, 456, 380, 884, 1072, 752, 284, 1296, 1300, 548, 1564, 2112, 1096, 1392, 1124, 2124, 500, 688, 368, 784, 532, 1304, 564, 1092, 1056, 696, 1420, 572, 1196, 736, 1108, 944, 1040, 1812, 1204, 344, 612, 1312, 628, 676, 1012, 2356, 1
+328, 768, 1000, 668, 1012, 1328, 572, 932, 332, 944, 1340, 680, 344, 720, 1048, 1360, 1328, 700, 1276, 1520, 1124, 608, 860, 480, 756, 712, 1176, 1812, 408, 784, 680, 1040, 624, 396, 1036, 1052, 1556, 884, 692, 1132, 1416, 1416, 764, 616, 1452, 2784, 768, 892, 888, 1316, 1104, 712, 540, 976, 704, 616, 1364, 288, 816, 1428, 960, 1476, 1372, 1180, 1312, 1272, 936, 880, 980, 412, 600, 784, 548, 1432, 624, 1332, 660, 948, 728, 2324, 816, 1524, 728, 1640, 1184, 1280, 1380, 668, 336, 572, 1176, 1408, 1012, 1324, 628, 1012, 984, 2860, 1016, 316, 2064, 280, 1376, 1612, 348, 1692, 1004, 1248, 656, 1212, 1836, 2372, 1172, 856, 940, 1372, 636, 472, 1404, 340, 600, 960, 688, 556, 1568, 1296, 716, 1188, 1384, 504, 1468, 1296, 928, 2504, 732, 1152, 1148, 900, 972, 1320, 1012, 1680, 1140, 376, 1400, 404, 704, 568, 1360, 584, 540, 976, 1172, 436, 968, 512, 1104, 604, 1336, 1436, 2748, 852, 852, 796, 488, 1008, 708, 2132, 1424, 1344, 940, 2724, 1420, 868, 1204, 544, 1156, 648, 1340, 944, 1324, 584, 1328, 668, 2032, 604, 772
+, 592, 2344, 628, 2264, 932, 888, 744, 1668, 1248, 708, 824, 1452, 1220, 1424, 1264, 300, 408, 696, 624, 676, 1352, 1048, 1320, 700, 1072, 684, 212, 1052, 1380, 380, 168, 1024, 984, 1992, 740, 792, 1036, 440, 1368, 1364, 540, 996, 1248, 1120, 1468, 708, 580, 544, 652, 480, 580, 1016, 1108, 640, 1396, 504, 680, 560, 1412, 1412, 2456, 704, 1048, 1304, 656, 1312, 1500, 740, 392, 1332, 240, 1100, 872, 632, 704, 1176, 1708, 1240, 1396, 468, 1512 ], "reward": [], "highest": [ 128, 128, 64, 128, 128, 128, 64, 128, 64, 128, 256, 64, 64, 128, 128, 64, 128, 64, 64, 128, 64, 64, 64, 128, 128, 32, 256, 256, 64, 128, 128, 32, 64, 128, 256, 64, 128, 64, 256, 128, 128, 128, 64, 128, 128, 128, 128, 64, 128, 128, 64, 128, 128, 64, 32, 64, 64, 64, 256, 128, 128, 128, 128, 64, 128, 64, 64, 64, 128, 128, 128, 128, 128, 64, 128, 128, 128, 128, 128, 128, 128, 128, 64, 128, 64, 256, 256, 64, 128, 128, 32, 128, 128, 64, 64, 128, 128, 64, 32, 128, 256, 32, 128, 128, 256, 128, 64, 64, 64, 128, 256, 64, 64, 128, 64, 64, 128, 256, 128
+, 64, 128, 128, 128, 64, 128, 128, 128, 64, 128, 64, 128, 128, 64, 128, 128, 64, 64, 64, 128, 64, 128, 128, 64, 64, 128, 64, 128, 128, 128, 32, 128, 32, 128, 128, 32, 256, 128, 64, 64, 64, 64, 64, 128, 128, 64, 64, 128, 32, 128, 64, 128, 128, 256, 64, 128, 128, 256, 128, 128, 64, 128, 128, 128, 64, 32, 128, 128, 128, 128, 256, 64, 256, 64, 128, 128, 128, 64, 64, 64, 128, 128, 64, 128, 128, 64, 128, 256, 128, 64, 128, 128, 128, 64, 128, 128, 64, 64, 64, 64, 64, 64, 64, 128, 128, 128, 32, 64, 64, 128, 128, 64, 64, 64, 128, 64, 64, 256, 64, 64, 64, 128, 64, 64, 64, 128, 64, 128, 64, 64, 64, 128, 128, 64, 64, 64, 256, 128, 256, 256, 128, 128, 128, 64, 128, 128, 64, 128, 128, 64, 128, 128, 128, 64, 64, 64, 128, 64, 64, 128, 64, 128, 128, 64, 128, 64, 128, 128, 64, 128, 128, 64, 128, 64, 128, 64, 64, 128, 64, 32, 128, 128, 256, 128, 128, 128, 64, 64, 256, 128, 32, 64, 128, 64, 64, 64, 64, 128, 64, 64, 64, 128, 64, 64, 128, 64, 64, 64, 128, 128, 64, 64, 128, 64, 128, 128, 128, 64, 128, 128, 128, 128, 128, 128, 128
+, 64, 64, 128, 128, 64, 256, 256, 256, 128, 128, 128, 128, 128, 128, 128, 128, 128, 64, 64, 256, 128, 32, 128, 128, 256, 128, 256, 128, 64, 128, 128, 64, 64, 128, 32, 64, 64, 64, 128, 64, 64, 128, 128, 128, 256, 64, 64, 128, 128, 64, 128, 256, 128, 128, 128, 128, 64, 128, 64, 128, 64, 128, 64, 64, 64, 128, 128, 64, 64, 128, 64, 32, 128, 128, 64, 128, 64, 128, 64, 64, 64, 256, 128, 128, 256, 128, 32, 128, 128, 128, 128, 64, 128, 256, 256, 128, 256, 128, 32, 256, 128, 128, 64, 128, 128, 128, 64, 64, 64, 256, 64, 64, 128, 128, 128, 64, 128, 256, 64, 64, 64, 64, 128, 64, 256, 128, 128, 32, 64, 128, 128, 64, 64, 128, 64, 64, 128, 256, 256, 128, 64, 128, 64, 64, 128, 128, 32, 64, 128, 128, 128, 256, 32, 64, 128, 64, 64, 64, 128, 128, 32, 128, 128, 64, 128, 128, 128, 64, 64, 128, 64, 64, 64, 128, 64, 128, 128, 64, 128, 32, 128, 128, 128, 64, 64, 128, 64, 128, 128, 128, 128, 64, 32, 128, 128, 128, 128, 256, 128, 32, 64, 128, 128, 64, 128, 128, 128, 32, 128, 128, 256, 128, 128, 64, 128, 64, 64, 64, 64, 256, 128, 64,
+128, 64, 256, 64, 64, 256, 64, 64, 128, 256, 64, 32, 64, 64, 32, 128, 128, 128, 128, 128, 32, 64, 128, 128, 128, 128, 64, 64, 128, 64, 64, 128, 64, 64, 128, 32, 128, 64, 64, 256, 64, 128, 128, 128, 128, 128, 128, 128, 128, 256, 64, 128, 64, 64, 256, 128, 128, 64, 128, 64, 64, 64, 64, 64, 256, 128, 128, 256, 128, 128, 128, 32, 32, 64, 128, 128, 64, 64, 64, 128, 32, 128, 128, 64, 64, 256, 64, 64, 128, 64, 128, 128, 128, 64, 64, 128, 128, 128, 256, 64, 64, 64, 128, 64, 128, 32, 64, 128, 32, 64, 128, 64, 64, 128, 64, 64, 128, 64, 128, 64, 64, 128, 32, 64, 32, 32, 32, 64, 128, 64, 32, 128, 128, 64, 128, 256, 128, 128, 128, 256, 32, 64, 32, 64, 64, 128, 64, 128, 128, 64, 128, 64, 128, 64, 128, 64, 128, 128, 128, 32, 64, 128, 64, 64, 128, 256, 128, 64, 128, 64, 128, 128, 64, 64, 32, 128, 128, 64, 32, 64, 128, 128, 128, 64, 128, 128, 128, 64, 64, 32, 64, 64, 64, 128, 32, 64, 64, 128, 64, 32, 128, 128, 128, 64, 64, 128, 128, 128, 64, 64, 128, 256, 64, 64, 128, 128, 128, 64, 64, 128, 64, 64, 128, 32, 64, 128, 64, 12
+8, 128, 128, 128, 128, 128, 128, 128, 32, 64, 64, 64, 128, 64, 128, 64, 64, 64, 256, 64, 128, 64, 128, 128, 128, 128, 64, 32, 64, 128, 128, 128, 128, 64, 128, 64, 256, 128, 32, 256, 32, 128, 128, 32, 128, 128, 128, 64, 128, 128, 256, 128, 64, 64, 128, 64, 64, 128, 32, 64, 128, 64, 64, 128, 128, 64, 128, 128, 32, 128, 128, 128, 256, 64, 128, 64, 64, 128, 128, 64, 128, 128, 32, 128, 32, 64, 64, 128, 64, 32, 128, 128, 32, 64, 64, 64, 64, 128, 128, 256, 64, 64, 64, 64, 128, 64, 256, 128, 128, 64, 256, 128, 64, 128, 64, 128, 64, 128, 64, 128, 64, 128, 64, 256, 64, 64, 64, 256, 64, 256, 64, 64, 64, 128, 128, 64, 64, 128, 128, 128, 128, 32, 32, 64, 64, 64, 128, 128, 128, 64, 128, 64, 32, 128, 128, 32, 16, 128, 64, 256, 64, 64, 128, 32, 128, 128, 64, 128, 128, 128, 128, 64, 64, 64, 64, 64, 64, 128, 64, 64, 128, 32, 64, 64, 128, 128, 256, 64, 128, 128, 64, 128, 128, 64, 32, 128, 32, 128, 64, 64, 64, 128, 128, 128, 128, 64, 128 ], "moves": [ 124, 195, 85, 148, 157, 163, 119, 161, 119, 163, 222, 98, 113, 142, 179, 108
+, 133, 137, 123, 165, 91, 138, 90, 145, 143, 81, 285, 249, 107, 194, 224, 81, 78, 169, 308, 98, 177, 121, 242, 137, 170, 140, 124, 160, 165, 122, 119, 108, 243, 167, 106, 186, 156, 131, 74, 143, 120, 136, 234, 203, 172, 195, 164, 100, 164, 81, 111, 89, 199, 179, 188, 169, 172, 114, 158, 147, 184, 194, 161, 181, 166, 156, 86, 193, 107, 242, 324, 120, 166, 157, 71, 153, 156, 118, 118, 131, 175, 129, 103, 138, 276, 81, 149, 153, 257, 175, 108, 95, 125, 166, 241, 104, 84, 136, 133, 92, 174, 286, 149, 132, 207, 167, 136, 80, 148, 169, 164, 149, 120, 101, 155, 153, 118, 118, 169, 104, 101, 111, 157, 101, 206, 155, 110, 101, 172, 97, 166, 179, 150, 63, 153, 67, 212, 132, 72, 207, 193, 108, 99, 151, 94, 96, 161, 133, 123, 125, 166, 58, 177, 110, 212, 151, 208, 94, 163, 135, 249, 179, 158, 105, 136, 104, 144, 94, 69, 154, 154, 169, 183, 281, 89, 278, 101, 171, 145, 226, 119, 120, 146, 154, 160, 91, 183, 133, 130, 203, 260, 161, 120, 126, 175, 204, 118, 177, 148, 90, 105, 157, 103, 103, 105, 106, 145, 168, 161, 67, 8
+8, 135, 167, 164, 130, 94, 93, 162, 115, 95, 251, 102, 127, 93, 143, 86, 86, 115, 171, 103, 142, 110, 117, 98, 145, 171, 88, 93, 94, 233, 168, 216, 224, 150, 183, 179, 112, 124, 140, 141, 101, 142, 85, 188, 142, 191, 101, 97, 110, 161, 93, 104, 140, 101, 175, 168, 114, 182, 108, 136, 147, 114, 179, 163, 111, 138, 69, 183, 122, 109, 162, 103, 75, 122, 223, 245, 214, 122, 121, 112, 131, 236, 155, 72, 105, 134, 140, 94, 117, 96, 159, 130, 103, 88, 158, 94, 153, 207, 93, 107, 125, 155, 140, 119, 97, 116, 72, 157, 167, 176, 116, 135, 167, 158, 153, 153, 136, 182, 114, 88, 169, 139, 105, 273, 237, 199, 173, 159, 131, 154, 180, 168, 189, 148, 181, 105, 99, 246, 147, 55, 149, 162, 236, 125, 286, 181, 113, 118, 157, 81, 114, 177, 47, 99, 81, 131, 173, 118, 83, 180, 156, 141, 246, 90, 100, 185, 172, 110, 107, 224, 199, 147, 191, 150, 92, 185, 108, 142, 96, 161, 111, 94, 100, 178, 139, 95, 120, 133, 99, 77, 170, 181, 121, 144, 84, 131, 101, 98, 81, 266, 163, 177, 223, 159, 91, 228, 223, 163, 157, 114, 141, 257, 201, 1
+68, 233, 164, 97, 196, 173, 204, 106, 223, 132, 126, 87, 125, 113, 212, 125, 125, 209, 191, 170, 121, 132, 234, 149, 95, 107, 108, 159, 106, 291, 149, 144, 60, 76, 128, 190, 100, 85, 160, 77, 117, 185, 293, 221, 170, 118, 140, 126, 109, 198, 207, 62, 115, 172, 148, 145, 197, 62, 112, 129, 132, 129, 123, 168, 173, 81, 146, 127, 107, 175, 150, 162, 66, 108, 115, 122, 97, 91, 152, 101, 168, 150, 93, 170, 69, 159, 154, 199, 114, 123, 122, 87, 200, 168, 156, 140, 102, 73, 144, 181, 136, 155, 204, 135, 55, 76, 156, 155, 97, 149, 129, 144, 79, 148, 124, 244, 153, 174, 145, 236, 95, 83, 89, 106, 206, 148, 93, 140, 89, 221, 107, 110, 229, 106, 104, 174, 234, 126, 92, 94, 97, 59, 145, 166, 145, 149, 158, 79, 107, 170, 134, 111, 166, 85, 116, 168, 107, 125, 185, 100, 109, 136, 55, 168, 121, 122, 196, 111, 195, 144, 169, 147, 181, 128, 168, 168, 272, 98, 146, 105, 96, 199, 158, 132, 100, 157, 98, 95, 85, 99, 101, 351, 179, 194, 229, 188, 151, 190, 73, 70, 112, 195, 133, 119, 151, 77, 167, 78, 180, 165, 107, 91, 220, 10
+6, 104, 147, 97, 163, 150, 154, 108, 93, 153, 150, 184, 192, 89, 75, 96, 151, 127, 180, 61, 89, 122, 60, 120, 198, 110, 86, 147, 138, 121, 179, 98, 165, 81, 153, 153, 79, 131, 81, 77, 73, 127, 143, 113, 63, 165, 160, 81, 198, 211, 127, 172, 131, 211, 91, 106, 72, 121, 84, 155, 86, 138, 127, 101, 169, 91, 171, 124, 147, 134, 136, 201, 149, 62, 95, 147, 102, 108, 124, 254, 150, 121, 115, 109, 127, 156, 88, 138, 61, 128, 165, 105, 65, 101, 124, 183, 160, 101, 148, 187, 138, 99, 118, 88, 112, 113, 153, 203, 84, 113, 102, 136, 99, 76, 144, 128, 195, 138, 102, 139, 202, 173, 120, 98, 200, 283, 123, 130, 116, 159, 134, 107, 81, 111, 107, 106, 196, 65, 132, 193, 128, 164, 154, 151, 154, 146, 118, 109, 126, 78, 107, 124, 85, 184, 98, 153, 99, 140, 100, 233, 120, 181, 119, 194, 151, 172, 176, 98, 67, 91, 165, 202, 152, 155, 104, 128, 156, 288, 135, 64, 198, 60, 173, 208, 74, 196, 119, 130, 98, 146, 255, 249, 142, 123, 133, 184, 109, 76, 177, 64, 93, 120, 113, 84, 204, 153, 119, 150, 173, 85, 176, 140, 113, 265, 112,
+153, 165, 131, 118, 156, 155, 191, 149, 79, 172, 79, 101, 100, 157, 87, 92, 123, 150, 84, 135, 90, 164, 100, 161, 185, 256, 133, 131, 116, 76, 123, 120, 216, 179, 156, 126, 293, 182, 128, 157, 82, 145, 106, 172, 136, 162, 87, 150, 121, 211, 91, 123, 99, 245, 107, 218, 129, 127, 116, 176, 146, 111, 112, 180, 145, 166, 170, 60, 72, 109, 106, 111, 156, 121, 166, 124, 135, 113, 49, 121, 169, 80, 47, 130, 134, 179, 124, 114, 131, 86, 171, 162, 95, 133, 143, 137, 186, 122, 90, 91, 104, 77, 107, 135, 155, 111, 170, 88, 130, 98, 167, 170, 263, 124, 149, 156, 125, 153, 178, 108, 81, 158, 67, 140, 123, 94, 108, 153, 203, 162, 181, 76, 204 ] }"
+json <- "{ "score": [ 1012, 1640, 460, 1272, 1356, 1360, 720, 1332, 764, 1392, 2192, 560, 740, 1204, 1500, 596, 1128, 924, 792, 1356, 588, 872, 604, 1088, 1168, 428, 2996, 2392, 596, 1452, 1740, 428, 516, 1268, 3188, 636, 1476, 704, 2528, 1020, 1384, 1128, 880, 1352, 1380, 1004, 1052, 588, 2148, 1424, 704, 1472, 1296, 772, 388, 1068, 720, 932, 2200, 1532, 1484, 1492, 1208, 600, 1328, 492, 704, 528, 1652, 1452, 1528, 1252, 1376, 724, 1296, 1072, 1496, 1528, 1308, 1456, 1280, 1356, 620, 1424, 704, 2308, 3100, 736, 1340, 1312, 332, 1232, 1236, 696, 740, 992, 1536, 936, 412, 1136, 2468, 492, 1244, 1040, 2520, 1384, 664, 584, 936, 1376, 2452, 752, 572, 1056, 896, 572, 1360, 2848, 1204, 896, 1728, 1332, 1052, 524, 1224, 1304, 1412, 984, 900, 740, 1232, 1176, 620, 972, 1388, 688, 684, 784, 1320, 620, 1644, 1116, 808, 620, 1328, 652, 1328, 1632, 1112, 316, 1296, 284, 1560, 1048, 356, 2112, 1588, 728, 608, 1004, 620, 580, 1352, 1048, 728, 1076, 1396, 292, 1332, 748, 1708, 1072, 2080, 672, 1396, 1020, 2660, 1456, 128
+0, 628, 1104, 880, 1080, 652, 364, 1300, 1268, 1376, 1472, 2732, 604, 3028, 696, 1320, 1124, 2060, 660, 728, 980, 1288, 1304, 644, 1416, 1088, 964, 1612, 2468, 1332, 824, 1072, 1332, 1808, 684, 1452, 1204, 548, 696, 1008, 676, 536, 636, 636, 1084, 1360, 1232, 408, 540, 980, 1160, 1296, 908, 592, 580, 1328, 744, 664, 2380, 672, 800, 580, 1296, 456, 536, 884, 1360, 700, 1204, 672, 788, 608, 1196, 1340, 512, 624, 628, 2320, 1428, 2244, 2156, 1272, 1464, 1432, 812, 1052, 1056, 784, 900, 992, 508, 1620, 1092, 1484, 672, 728, 676, 1308, 648, 608, 1120, 592, 1372, 1300, 864, 1480, 624, 1220, 1308, 752, 1428, 1240, 696, 1100, 440, 1352, 892, 632, 1424, 664, 468, 984, 1776, 2448, 1536, 1012, 1020, 644, 960, 2344, 1364, 368, 732, 1040, 748, 588, 756, 624, 1292, 836, 648, 588, 1324, 604, 1120, 1448, 580, 656, 940, 1168, 1264, 724, 556, 988, 448, 1320, 1436, 1324, 804, 1172, 1196, 1352, 1160, 1100, 1056, 1476, 836, 600, 1376, 1128, 732, 2336, 2340, 1936, 1328, 1312, 1012, 1164, 1412, 1388, 1496, 1164, 1392, 684, 600, 2
+364, 1176, 272, 1292, 1432, 2196, 1044, 3080, 1496, 812, 992, 1328, 456, 756, 1452, 220, 700, 536, 924, 1332, 744, 544, 1384, 1324, 1208, 2420, 572, 632, 1468, 1432, 656, 924, 2060, 1668, 1220, 1476, 1280, 564, 1432, 704, 1216, 620, 1556, 688, 620, 636, 1392, 1024, 592, 800, 1168, 600, 388, 1424, 1700, 820, 1148, 560, 1060, 708, 620, 464, 2380, 1432, 1392, 2156, 1232, 432, 1680, 1664, 1268, 1320, 732, 1192, 2708, 2048, 1268, 2220, 1380, 444, 2048, 1544, 1604, 620, 1924, 1096, 1028, 508, 808, 864, 2084, 740, 872, 1484, 1340, 1388, 768, 1048, 2356, 1084, 684, 692, 768, 1244, 680, 3056, 1132, 1220, 292, 460, 1024, 1628, 628, 556, 1324, 508, 676, 1528, 2948, 2184, 1320, 872, 1128, 776, 760, 1472, 1712, 272, 748, 1344, 1312, 1148, 2072, 304, 676, 1144, 1008, 712, 700, 1456, 1372, 428, 1260, 1032, 692, 1292, 1288, 1364, 464, 648, 912, 760, 636, 548, 1316, 608, 1376, 1020, 612, 1280, 292, 1340, 1212, 1452, 652, 776, 976, 520, 1672, 1340, 1320, 1036, 628, 396, 1092, 1468, 1084, 1180, 2124, 1188, 256, 488, 1188, 135
+2, 600, 1224, 1024, 1136, 432, 1112, 1012, 2400, 1264, 1384, 940, 2184, 596, 504, 580, 632, 2140, 1264, 572, 1108, 512, 2260, 716, 720, 2352, 728, 704, 1412, 2436, 940, 424, 632, 588, 280, 1312, 1376, 1268, 1224, 1160, 476, 616, 1416, 1012, 900, 1428, 540, 736, 1432, 800, 888, 1384, 544, 696, 1120, 260, 1316, 836, 884, 2024, 768, 1540, 1040, 1252, 1112, 1452, 1032, 1364, 1464, 2444, 572, 1100, 608, 592, 1984, 1172, 1056, 720, 1200, 588, 536, 568, 604, 780, 3140, 1428, 1632, 2428, 1580, 1324, 1468, 376, 384, 776, 1508, 1140, 916, 984, 472, 1388, 360, 1476, 1432, 596, 640, 2292, 568, 600, 1228, 616, 1308, 1324, 1236, 724, 616, 1236, 1296, 1344, 2084, 580, 440, 632, 1132, 852, 1448, 276, 536, 1068, 300, 788, 1648, 820, 636, 1260, 872, 900, 1404, 684, 1340, 556, 992, 1136, 368, 904, 428, 456, 380, 884, 1072, 752, 284, 1296, 1300, 548, 1564, 2112, 1096, 1392, 1124, 2124, 500, 688, 368, 784, 532, 1304, 564, 1092, 1056, 696, 1420, 572, 1196, 736, 1108, 944, 1040, 1812, 1204, 344, 612, 1312, 628, 676, 1012, 2356, 1
+328, 768, 1000, 668, 1012, 1328, 572, 932, 332, 944, 1340, 680, 344, 720, 1048, 1360, 1328, 700, 1276, 1520, 1124, 608, 860, 480, 756, 712, 1176, 1812, 408, 784, 680, 1040, 624, 396, 1036, 1052, 1556, 884, 692, 1132, 1416, 1416, 764, 616, 1452, 2784, 768, 892, 888, 1316, 1104, 712, 540, 976, 704, 616, 1364, 288, 816, 1428, 960, 1476, 1372, 1180, 1312, 1272, 936, 880, 980, 412, 600, 784, 548, 1432, 624, 1332, 660, 948, 728, 2324, 816, 1524, 728, 1640, 1184, 1280, 1380, 668, 336, 572, 1176, 1408, 1012, 1324, 628, 1012, 984, 2860, 1016, 316, 2064, 280, 1376, 1612, 348, 1692, 1004, 1248, 656, 1212, 1836, 2372, 1172, 856, 940, 1372, 636, 472, 1404, 340, 600, 960, 688, 556, 1568, 1296, 716, 1188, 1384, 504, 1468, 1296, 928, 2504, 732, 1152, 1148, 900, 972, 1320, 1012, 1680, 1140, 376, 1400, 404, 704, 568, 1360, 584, 540, 976, 1172, 436, 968, 512, 1104, 604, 1336, 1436, 2748, 852, 852, 796, 488, 1008, 708, 2132, 1424, 1344, 940, 2724, 1420, 868, 1204, 544, 1156, 648, 1340, 944, 1324, 584, 1328, 668, 2032, 604, 772
+, 592, 2344, 628, 2264, 932, 888, 744, 1668, 1248, 708, 824, 1452, 1220, 1424, 1264, 300, 408, 696, 624, 676, 1352, 1048, 1320, 700, 1072, 684, 212, 1052, 1380, 380, 168, 1024, 984, 1992, 740, 792, 1036, 440, 1368, 1364, 540, 996, 1248, 1120, 1468, 708, 580, 544, 652, 480, 580, 1016, 1108, 640, 1396, 504, 680, 560, 1412, 1412, 2456, 704, 1048, 1304, 656, 1312, 1500, 740, 392, 1332, 240, 1100, 872, 632, 704, 1176, 1708, 1240, 1396, 468, 1512 ], "reward": [], "highest": [ 128, 128, 64, 128, 128, 128, 64, 128, 64, 128, 256, 64, 64, 128, 128, 64, 128, 64, 64, 128, 64, 64, 64, 128, 128, 32, 256, 256, 64, 128, 128, 32, 64, 128, 256, 64, 128, 64, 256, 128, 128, 128, 64, 128, 128, 128, 128, 64, 128, 128, 64, 128, 128, 64, 32, 64, 64, 64, 256, 128, 128, 128, 128, 64, 128, 64, 64, 64, 128, 128, 128, 128, 128, 64, 128, 128, 128, 128, 128, 128, 128, 128, 64, 128, 64, 256, 256, 64, 128, 128, 32, 128, 128, 64, 64, 128, 128, 64, 32, 128, 256, 32, 128, 128, 256, 128, 64, 64, 64, 128, 256, 64, 64, 128, 64, 64, 128, 256, 128
+, 64, 128, 128, 128, 64, 128, 128, 128, 64, 128, 64, 128, 128, 64, 128, 128, 64, 64, 64, 128, 64, 128, 128, 64, 64, 128, 64, 128, 128, 128, 32, 128, 32, 128, 128, 32, 256, 128, 64, 64, 64, 64, 64, 128, 128, 64, 64, 128, 32, 128, 64, 128, 128, 256, 64, 128, 128, 256, 128, 128, 64, 128, 128, 128, 64, 32, 128, 128, 128, 128, 256, 64, 256, 64, 128, 128, 128, 64, 64, 64, 128, 128, 64, 128, 128, 64, 128, 256, 128, 64, 128, 128, 128, 64, 128, 128, 64, 64, 64, 64, 64, 64, 64, 128, 128, 128, 32, 64, 64, 128, 128, 64, 64, 64, 128, 64, 64, 256, 64, 64, 64, 128, 64, 64, 64, 128, 64, 128, 64, 64, 64, 128, 128, 64, 64, 64, 256, 128, 256, 256, 128, 128, 128, 64, 128, 128, 64, 128, 128, 64, 128, 128, 128, 64, 64, 64, 128, 64, 64, 128, 64, 128, 128, 64, 128, 64, 128, 128, 64, 128, 128, 64, 128, 64, 128, 64, 64, 128, 64, 32, 128, 128, 256, 128, 128, 128, 64, 64, 256, 128, 32, 64, 128, 64, 64, 64, 64, 128, 64, 64, 64, 128, 64, 64, 128, 64, 64, 64, 128, 128, 64, 64, 128, 64, 128, 128, 128, 64, 128, 128, 128, 128, 128, 128, 128
+, 64, 64, 128, 128, 64, 256, 256, 256, 128, 128, 128, 128, 128, 128, 128, 128, 128, 64, 64, 256, 128, 32, 128, 128, 256, 128, 256, 128, 64, 128, 128, 64, 64, 128, 32, 64, 64, 64, 128, 64, 64, 128, 128, 128, 256, 64, 64, 128, 128, 64, 128, 256, 128, 128, 128, 128, 64, 128, 64, 128, 64, 128, 64, 64, 64, 128, 128, 64, 64, 128, 64, 32, 128, 128, 64, 128, 64, 128, 64, 64, 64, 256, 128, 128, 256, 128, 32, 128, 128, 128, 128, 64, 128, 256, 256, 128, 256, 128, 32, 256, 128, 128, 64, 128, 128, 128, 64, 64, 64, 256, 64, 64, 128, 128, 128, 64, 128, 256, 64, 64, 64, 64, 128, 64, 256, 128, 128, 32, 64, 128, 128, 64, 64, 128, 64, 64, 128, 256, 256, 128, 64, 128, 64, 64, 128, 128, 32, 64, 128, 128, 128, 256, 32, 64, 128, 64, 64, 64, 128, 128, 32, 128, 128, 64, 128, 128, 128, 64, 64, 128, 64, 64, 64, 128, 64, 128, 128, 64, 128, 32, 128, 128, 128, 64, 64, 128, 64, 128, 128, 128, 128, 64, 32, 128, 128, 128, 128, 256, 128, 32, 64, 128, 128, 64, 128, 128, 128, 32, 128, 128, 256, 128, 128, 64, 128, 64, 64, 64, 64, 256, 128, 64,
+128, 64, 256, 64, 64, 256, 64, 64, 128, 256, 64, 32, 64, 64, 32, 128, 128, 128, 128, 128, 32, 64, 128, 128, 128, 128, 64, 64, 128, 64, 64, 128, 64, 64, 128, 32, 128, 64, 64, 256, 64, 128, 128, 128, 128, 128, 128, 128, 128, 256, 64, 128, 64, 64, 256, 128, 128, 64, 128, 64, 64, 64, 64, 64, 256, 128, 128, 256, 128, 128, 128, 32, 32, 64, 128, 128, 64, 64, 64, 128, 32, 128, 128, 64, 64, 256, 64, 64, 128, 64, 128, 128, 128, 64, 64, 128, 128, 128, 256, 64, 64, 64, 128, 64, 128, 32, 64, 128, 32, 64, 128, 64, 64, 128, 64, 64, 128, 64, 128, 64, 64, 128, 32, 64, 32, 32, 32, 64, 128, 64, 32, 128, 128, 64, 128, 256, 128, 128, 128, 256, 32, 64, 32, 64, 64, 128, 64, 128, 128, 64, 128, 64, 128, 64, 128, 64, 128, 128, 128, 32, 64, 128, 64, 64, 128, 256, 128, 64, 128, 64, 128, 128, 64, 64, 32, 128, 128, 64, 32, 64, 128, 128, 128, 64, 128, 128, 128, 64, 64, 32, 64, 64, 64, 128, 32, 64, 64, 128, 64, 32, 128, 128, 128, 64, 64, 128, 128, 128, 64, 64, 128, 256, 64, 64, 128, 128, 128, 64, 64, 128, 64, 64, 128, 32, 64, 128, 64, 12
+8, 128, 128, 128, 128, 128, 128, 128, 32, 64, 64, 64, 128, 64, 128, 64, 64, 64, 256, 64, 128, 64, 128, 128, 128, 128, 64, 32, 64, 128, 128, 128, 128, 64, 128, 64, 256, 128, 32, 256, 32, 128, 128, 32, 128, 128, 128, 64, 128, 128, 256, 128, 64, 64, 128, 64, 64, 128, 32, 64, 128, 64, 64, 128, 128, 64, 128, 128, 32, 128, 128, 128, 256, 64, 128, 64, 64, 128, 128, 64, 128, 128, 32, 128, 32, 64, 64, 128, 64, 32, 128, 128, 32, 64, 64, 64, 64, 128, 128, 256, 64, 64, 64, 64, 128, 64, 256, 128, 128, 64, 256, 128, 64, 128, 64, 128, 64, 128, 64, 128, 64, 128, 64, 256, 64, 64, 64, 256, 64, 256, 64, 64, 64, 128, 128, 64, 64, 128, 128, 128, 128, 32, 32, 64, 64, 64, 128, 128, 128, 64, 128, 64, 32, 128, 128, 32, 16, 128, 64, 256, 64, 64, 128, 32, 128, 128, 64, 128, 128, 128, 128, 64, 64, 64, 64, 64, 64, 128, 64, 64, 128, 32, 64, 64, 128, 128, 256, 64, 128, 128, 64, 128, 128, 64, 32, 128, 32, 128, 64, 64, 64, 128, 128, 128, 128, 64, 128 ], "moves": [ 124, 195, 85, 148, 157, 163, 119, 161, 119, 163, 222, 98, 113, 142, 179, 108
+, 133, 137, 123, 165, 91, 138, 90, 145, 143, 81, 285, 249, 107, 194, 224, 81, 78, 169, 308, 98, 177, 121, 242, 137, 170, 140, 124, 160, 165, 122, 119, 108, 243, 167, 106, 186, 156, 131, 74, 143, 120, 136, 234, 203, 172, 195, 164, 100, 164, 81, 111, 89, 199, 179, 188, 169, 172, 114, 158, 147, 184, 194, 161, 181, 166, 156, 86, 193, 107, 242, 324, 120, 166, 157, 71, 153, 156, 118, 118, 131, 175, 129, 103, 138, 276, 81, 149, 153, 257, 175, 108, 95, 125, 166, 241, 104, 84, 136, 133, 92, 174, 286, 149, 132, 207, 167, 136, 80, 148, 169, 164, 149, 120, 101, 155, 153, 118, 118, 169, 104, 101, 111, 157, 101, 206, 155, 110, 101, 172, 97, 166, 179, 150, 63, 153, 67, 212, 132, 72, 207, 193, 108, 99, 151, 94, 96, 161, 133, 123, 125, 166, 58, 177, 110, 212, 151, 208, 94, 163, 135, 249, 179, 158, 105, 136, 104, 144, 94, 69, 154, 154, 169, 183, 281, 89, 278, 101, 171, 145, 226, 119, 120, 146, 154, 160, 91, 183, 133, 130, 203, 260, 161, 120, 126, 175, 204, 118, 177, 148, 90, 105, 157, 103, 103, 105, 106, 145, 168, 161, 67, 8
+8, 135, 167, 164, 130, 94, 93, 162, 115, 95, 251, 102, 127, 93, 143, 86, 86, 115, 171, 103, 142, 110, 117, 98, 145, 171, 88, 93, 94, 233, 168, 216, 224, 150, 183, 179, 112, 124, 140, 141, 101, 142, 85, 188, 142, 191, 101, 97, 110, 161, 93, 104, 140, 101, 175, 168, 114, 182, 108, 136, 147, 114, 179, 163, 111, 138, 69, 183, 122, 109, 162, 103, 75, 122, 223, 245, 214, 122, 121, 112, 131, 236, 155, 72, 105, 134, 140, 94, 117, 96, 159, 130, 103, 88, 158, 94, 153, 207, 93, 107, 125, 155, 140, 119, 97, 116, 72, 157, 167, 176, 116, 135, 167, 158, 153, 153, 136, 182, 114, 88, 169, 139, 105, 273, 237, 199, 173, 159, 131, 154, 180, 168, 189, 148, 181, 105, 99, 246, 147, 55, 149, 162, 236, 125, 286, 181, 113, 118, 157, 81, 114, 177, 47, 99, 81, 131, 173, 118, 83, 180, 156, 141, 246, 90, 100, 185, 172, 110, 107, 224, 199, 147, 191, 150, 92, 185, 108, 142, 96, 161, 111, 94, 100, 178, 139, 95, 120, 133, 99, 77, 170, 181, 121, 144, 84, 131, 101, 98, 81, 266, 163, 177, 223, 159, 91, 228, 223, 163, 157, 114, 141, 257, 201, 1
+68, 233, 164, 97, 196, 173, 204, 106, 223, 132, 126, 87, 125, 113, 212, 125, 125, 209, 191, 170, 121, 132, 234, 149, 95, 107, 108, 159, 106, 291, 149, 144, 60, 76, 128, 190, 100, 85, 160, 77, 117, 185, 293, 221, 170, 118, 140, 126, 109, 198, 207, 62, 115, 172, 148, 145, 197, 62, 112, 129, 132, 129, 123, 168, 173, 81, 146, 127, 107, 175, 150, 162, 66, 108, 115, 122, 97, 91, 152, 101, 168, 150, 93, 170, 69, 159, 154, 199, 114, 123, 122, 87, 200, 168, 156, 140, 102, 73, 144, 181, 136, 155, 204, 135, 55, 76, 156, 155, 97, 149, 129, 144, 79, 148, 124, 244, 153, 174, 145, 236, 95, 83, 89, 106, 206, 148, 93, 140, 89, 221, 107, 110, 229, 106, 104, 174, 234, 126, 92, 94, 97, 59, 145, 166, 145, 149, 158, 79, 107, 170, 134, 111, 166, 85, 116, 168, 107, 125, 185, 100, 109, 136, 55, 168, 121, 122, 196, 111, 195, 144, 169, 147, 181, 128, 168, 168, 272, 98, 146, 105, 96, 199, 158, 132, 100, 157, 98, 95, 85, 99, 101, 351, 179, 194, 229, 188, 151, 190, 73, 70, 112, 195, 133, 119, 151, 77, 167, 78, 180, 165, 107, 91, 220, 10
+6, 104, 147, 97, 163, 150, 154, 108, 93, 153, 150, 184, 192, 89, 75, 96, 151, 127, 180, 61, 89, 122, 60, 120, 198, 110, 86, 147, 138, 121, 179, 98, 165, 81, 153, 153, 79, 131, 81, 77, 73, 127, 143, 113, 63, 165, 160, 81, 198, 211, 127, 172, 131, 211, 91, 106, 72, 121, 84, 155, 86, 138, 127, 101, 169, 91, 171, 124, 147, 134, 136, 201, 149, 62, 95, 147, 102, 108, 124, 254, 150, 121, 115, 109, 127, 156, 88, 138, 61, 128, 165, 105, 65, 101, 124, 183, 160, 101, 148, 187, 138, 99, 118, 88, 112, 113, 153, 203, 84, 113, 102, 136, 99, 76, 144, 128, 195, 138, 102, 139, 202, 173, 120, 98, 200, 283, 123, 130, 116, 159, 134, 107, 81, 111, 107, 106, 196, 65, 132, 193, 128, 164, 154, 151, 154, 146, 118, 109, 126, 78, 107, 124, 85, 184, 98, 153, 99, 140, 100, 233, 120, 181, 119, 194, 151, 172, 176, 98, 67, 91, 165, 202, 152, 155, 104, 128, 156, 288, 135, 64, 198, 60, 173, 208, 74, 196, 119, 130, 98, 146, 255, 249, 142, 123, 133, 184, 109, 76, 177, 64, 93, 120, 113, 84, 204, 153, 119, 150, 173, 85, 176, 140, 113, 265, 112,
+153, 165, 131, 118, 156, 155, 191, 149, 79, 172, 79, 101, 100, 157, 87, 92, 123, 150, 84, 135, 90, 164, 100, 161, 185, 256, 133, 131, 116, 76, 123, 120, 216, 179, 156, 126, 293, 182, 128, 157, 82, 145, 106, 172, 136, 162, 87, 150, 121, 211, 91, 123, 99, 245, 107, 218, 129, 127, 116, 176, 146, 111, 112, 180, 145, 166, 170, 60, 72, 109, 106, 111, 156, 121, 166, 124, 135, 113, 49, 121, 169, 80, 47, 130, 134, 179, 124, 114, 131, 86, 171, 162, 95, 133, 143, 137, 186, 122, 90, 91, 104, 77, 107, 135, 155, 111, 170, 88, 130, 98, 167, 170, 263, 124, 149, 156, 125, 153, 178, 108, 81, 158, 67, 140, 123, 94, 108, 153, 203, 162, 181, 76, 204 ] }";
+json <- '{ "score": [ 1012, 1640, 460, 1272, 1356, 1360, 720, 1332, 764, 1392, 2192, 560, 740, 1204, 1500, 596, 1128, 924, 792, 1356, 588, 872, 604, 1088, 1168, 428, 2996, 2392, 596, 1452, 1740, 428, 516, 1268, 3188, 636, 1476, 704, 2528, 1020, 1384, 1128, 880, 1352, 1380, 1004, 1052, 588, 2148, 1424, 704, 1472, 1296, 772, 388, 1068, 720, 932, 2200, 1532, 1484, 1492, 1208, 600, 1328, 492, 704, 528, 1652, 1452, 1528, 1252, 1376, 724, 1296, 1072, 1496, 1528, 1308, 1456, 1280, 1356, 620, 1424, 704, 2308, 3100, 736, 1340, 1312, 332, 1232, 1236, 696, 740, 992, 1536, 936, 412, 1136, 2468, 492, 1244, 1040, 2520, 1384, 664, 584, 936, 1376, 2452, 752, 572, 1056, 896, 572, 1360, 2848, 1204, 896, 1728, 1332, 1052, 524, 1224, 1304, 1412, 984, 900, 740, 1232, 1176, 620, 972, 1388, 688, 684, 784, 1320, 620, 1644, 1116, 808, 620, 1328, 652, 1328, 1632, 1112, 316, 1296, 284, 1560, 1048, 356, 2112, 1588, 728, 608, 1004, 620, 580, 1352, 1048, 728, 1076, 1396, 292, 1332, 748, 1708, 1072, 2080, 672, 1396, 1020, 2660, 1456, 128
+0, 628, 1104, 880, 1080, 652, 364, 1300, 1268, 1376, 1472, 2732, 604, 3028, 696, 1320, 1124, 2060, 660, 728, 980, 1288, 1304, 644, 1416, 1088, 964, 1612, 2468, 1332, 824, 1072, 1332, 1808, 684, 1452, 1204, 548, 696, 1008, 676, 536, 636, 636, 1084, 1360, 1232, 408, 540, 980, 1160, 1296, 908, 592, 580, 1328, 744, 664, 2380, 672, 800, 580, 1296, 456, 536, 884, 1360, 700, 1204, 672, 788, 608, 1196, 1340, 512, 624, 628, 2320, 1428, 2244, 2156, 1272, 1464, 1432, 812, 1052, 1056, 784, 900, 992, 508, 1620, 1092, 1484, 672, 728, 676, 1308, 648, 608, 1120, 592, 1372, 1300, 864, 1480, 624, 1220, 1308, 752, 1428, 1240, 696, 1100, 440, 1352, 892, 632, 1424, 664, 468, 984, 1776, 2448, 1536, 1012, 1020, 644, 960, 2344, 1364, 368, 732, 1040, 748, 588, 756, 624, 1292, 836, 648, 588, 1324, 604, 1120, 1448, 580, 656, 940, 1168, 1264, 724, 556, 988, 448, 1320, 1436, 1324, 804, 1172, 1196, 1352, 1160, 1100, 1056, 1476, 836, 600, 1376, 1128, 732, 2336, 2340, 1936, 1328, 1312, 1012, 1164, 1412, 1388, 1496, 1164, 1392, 684, 600, 2
+364, 1176, 272, 1292, 1432, 2196, 1044, 3080, 1496, 812, 992, 1328, 456, 756, 1452, 220, 700, 536, 924, 1332, 744, 544, 1384, 1324, 1208, 2420, 572, 632, 1468, 1432, 656, 924, 2060, 1668, 1220, 1476, 1280, 564, 1432, 704, 1216, 620, 1556, 688, 620, 636, 1392, 1024, 592, 800, 1168, 600, 388, 1424, 1700, 820, 1148, 560, 1060, 708, 620, 464, 2380, 1432, 1392, 2156, 1232, 432, 1680, 1664, 1268, 1320, 732, 1192, 2708, 2048, 1268, 2220, 1380, 444, 2048, 1544, 1604, 620, 1924, 1096, 1028, 508, 808, 864, 2084, 740, 872, 1484, 1340, 1388, 768, 1048, 2356, 1084, 684, 692, 768, 1244, 680, 3056, 1132, 1220, 292, 460, 1024, 1628, 628, 556, 1324, 508, 676, 1528, 2948, 2184, 1320, 872, 1128, 776, 760, 1472, 1712, 272, 748, 1344, 1312, 1148, 2072, 304, 676, 1144, 1008, 712, 700, 1456, 1372, 428, 1260, 1032, 692, 1292, 1288, 1364, 464, 648, 912, 760, 636, 548, 1316, 608, 1376, 1020, 612, 1280, 292, 1340, 1212, 1452, 652, 776, 976, 520, 1672, 1340, 1320, 1036, 628, 396, 1092, 1468, 1084, 1180, 2124, 1188, 256, 488, 1188, 135
+2, 600, 1224, 1024, 1136, 432, 1112, 1012, 2400, 1264, 1384, 940, 2184, 596, 504, 580, 632, 2140, 1264, 572, 1108, 512, 2260, 716, 720, 2352, 728, 704, 1412, 2436, 940, 424, 632, 588, 280, 1312, 1376, 1268, 1224, 1160, 476, 616, 1416, 1012, 900, 1428, 540, 736, 1432, 800, 888, 1384, 544, 696, 1120, 260, 1316, 836, 884, 2024, 768, 1540, 1040, 1252, 1112, 1452, 1032, 1364, 1464, 2444, 572, 1100, 608, 592, 1984, 1172, 1056, 720, 1200, 588, 536, 568, 604, 780, 3140, 1428, 1632, 2428, 1580, 1324, 1468, 376, 384, 776, 1508, 1140, 916, 984, 472, 1388, 360, 1476, 1432, 596, 640, 2292, 568, 600, 1228, 616, 1308, 1324, 1236, 724, 616, 1236, 1296, 1344, 2084, 580, 440, 632, 1132, 852, 1448, 276, 536, 1068, 300, 788, 1648, 820, 636, 1260, 872, 900, 1404, 684, 1340, 556, 992, 1136, 368, 904, 428, 456, 380, 884, 1072, 752, 284, 1296, 1300, 548, 1564, 2112, 1096, 1392, 1124, 2124, 500, 688, 368, 784, 532, 1304, 564, 1092, 1056, 696, 1420, 572, 1196, 736, 1108, 944, 1040, 1812, 1204, 344, 612, 1312, 628, 676, 1012, 2356, 1
+328, 768, 1000, 668, 1012, 1328, 572, 932, 332, 944, 1340, 680, 344, 720, 1048, 1360, 1328, 700, 1276, 1520, 1124, 608, 860, 480, 756, 712, 1176, 1812, 408, 784, 680, 1040, 624, 396, 1036, 1052, 1556, 884, 692, 1132, 1416, 1416, 764, 616, 1452, 2784, 768, 892, 888, 1316, 1104, 712, 540, 976, 704, 616, 1364, 288, 816, 1428, 960, 1476, 1372, 1180, 1312, 1272, 936, 880, 980, 412, 600, 784, 548, 1432, 624, 1332, 660, 948, 728, 2324, 816, 1524, 728, 1640, 1184, 1280, 1380, 668, 336, 572, 1176, 1408, 1012, 1324, 628, 1012, 984, 2860, 1016, 316, 2064, 280, 1376, 1612, 348, 1692, 1004, 1248, 656, 1212, 1836, 2372, 1172, 856, 940, 1372, 636, 472, 1404, 340, 600, 960, 688, 556, 1568, 1296, 716, 1188, 1384, 504, 1468, 1296, 928, 2504, 732, 1152, 1148, 900, 972, 1320, 1012, 1680, 1140, 376, 1400, 404, 704, 568, 1360, 584, 540, 976, 1172, 436, 968, 512, 1104, 604, 1336, 1436, 2748, 852, 852, 796, 488, 1008, 708, 2132, 1424, 1344, 940, 2724, 1420, 868, 1204, 544, 1156, 648, 1340, 944, 1324, 584, 1328, 668, 2032, 604, 772
+, 592, 2344, 628, 2264, 932, 888, 744, 1668, 1248, 708, 824, 1452, 1220, 1424, 1264, 300, 408, 696, 624, 676, 1352, 1048, 1320, 700, 1072, 684, 212, 1052, 1380, 380, 168, 1024, 984, 1992, 740, 792, 1036, 440, 1368, 1364, 540, 996, 1248, 1120, 1468, 708, 580, 544, 652, 480, 580, 1016, 1108, 640, 1396, 504, 680, 560, 1412, 1412, 2456, 704, 1048, 1304, 656, 1312, 1500, 740, 392, 1332, 240, 1100, 872, 632, 704, 1176, 1708, 1240, 1396, 468, 1512 ], "reward": [], "highest": [ 128, 128, 64, 128, 128, 128, 64, 128, 64, 128, 256, 64, 64, 128, 128, 64, 128, 64, 64, 128, 64, 64, 64, 128, 128, 32, 256, 256, 64, 128, 128, 32, 64, 128, 256, 64, 128, 64, 256, 128, 128, 128, 64, 128, 128, 128, 128, 64, 128, 128, 64, 128, 128, 64, 32, 64, 64, 64, 256, 128, 128, 128, 128, 64, 128, 64, 64, 64, 128, 128, 128, 128, 128, 64, 128, 128, 128, 128, 128, 128, 128, 128, 64, 128, 64, 256, 256, 64, 128, 128, 32, 128, 128, 64, 64, 128, 128, 64, 32, 128, 256, 32, 128, 128, 256, 128, 64, 64, 64, 128, 256, 64, 64, 128, 64, 64, 128, 256, 128
+, 64, 128, 128, 128, 64, 128, 128, 128, 64, 128, 64, 128, 128, 64, 128, 128, 64, 64, 64, 128, 64, 128, 128, 64, 64, 128, 64, 128, 128, 128, 32, 128, 32, 128, 128, 32, 256, 128, 64, 64, 64, 64, 64, 128, 128, 64, 64, 128, 32, 128, 64, 128, 128, 256, 64, 128, 128, 256, 128, 128, 64, 128, 128, 128, 64, 32, 128, 128, 128, 128, 256, 64, 256, 64, 128, 128, 128, 64, 64, 64, 128, 128, 64, 128, 128, 64, 128, 256, 128, 64, 128, 128, 128, 64, 128, 128, 64, 64, 64, 64, 64, 64, 64, 128, 128, 128, 32, 64, 64, 128, 128, 64, 64, 64, 128, 64, 64, 256, 64, 64, 64, 128, 64, 64, 64, 128, 64, 128, 64, 64, 64, 128, 128, 64, 64, 64, 256, 128, 256, 256, 128, 128, 128, 64, 128, 128, 64, 128, 128, 64, 128, 128, 128, 64, 64, 64, 128, 64, 64, 128, 64, 128, 128, 64, 128, 64, 128, 128, 64, 128, 128, 64, 128, 64, 128, 64, 64, 128, 64, 32, 128, 128, 256, 128, 128, 128, 64, 64, 256, 128, 32, 64, 128, 64, 64, 64, 64, 128, 64, 64, 64, 128, 64, 64, 128, 64, 64, 64, 128, 128, 64, 64, 128, 64, 128, 128, 128, 64, 128, 128, 128, 128, 128, 128, 128
+, 64, 64, 128, 128, 64, 256, 256, 256, 128, 128, 128, 128, 128, 128, 128, 128, 128, 64, 64, 256, 128, 32, 128, 128, 256, 128, 256, 128, 64, 128, 128, 64, 64, 128, 32, 64, 64, 64, 128, 64, 64, 128, 128, 128, 256, 64, 64, 128, 128, 64, 128, 256, 128, 128, 128, 128, 64, 128, 64, 128, 64, 128, 64, 64, 64, 128, 128, 64, 64, 128, 64, 32, 128, 128, 64, 128, 64, 128, 64, 64, 64, 256, 128, 128, 256, 128, 32, 128, 128, 128, 128, 64, 128, 256, 256, 128, 256, 128, 32, 256, 128, 128, 64, 128, 128, 128, 64, 64, 64, 256, 64, 64, 128, 128, 128, 64, 128, 256, 64, 64, 64, 64, 128, 64, 256, 128, 128, 32, 64, 128, 128, 64, 64, 128, 64, 64, 128, 256, 256, 128, 64, 128, 64, 64, 128, 128, 32, 64, 128, 128, 128, 256, 32, 64, 128, 64, 64, 64, 128, 128, 32, 128, 128, 64, 128, 128, 128, 64, 64, 128, 64, 64, 64, 128, 64, 128, 128, 64, 128, 32, 128, 128, 128, 64, 64, 128, 64, 128, 128, 128, 128, 64, 32, 128, 128, 128, 128, 256, 128, 32, 64, 128, 128, 64, 128, 128, 128, 32, 128, 128, 256, 128, 128, 64, 128, 64, 64, 64, 64, 256, 128, 64,
+128, 64, 256, 64, 64, 256, 64, 64, 128, 256, 64, 32, 64, 64, 32, 128, 128, 128, 128, 128, 32, 64, 128, 128, 128, 128, 64, 64, 128, 64, 64, 128, 64, 64, 128, 32, 128, 64, 64, 256, 64, 128, 128, 128, 128, 128, 128, 128, 128, 256, 64, 128, 64, 64, 256, 128, 128, 64, 128, 64, 64, 64, 64, 64, 256, 128, 128, 256, 128, 128, 128, 32, 32, 64, 128, 128, 64, 64, 64, 128, 32, 128, 128, 64, 64, 256, 64, 64, 128, 64, 128, 128, 128, 64, 64, 128, 128, 128, 256, 64, 64, 64, 128, 64, 128, 32, 64, 128, 32, 64, 128, 64, 64, 128, 64, 64, 128, 64, 128, 64, 64, 128, 32, 64, 32, 32, 32, 64, 128, 64, 32, 128, 128, 64, 128, 256, 128, 128, 128, 256, 32, 64, 32, 64, 64, 128, 64, 128, 128, 64, 128, 64, 128, 64, 128, 64, 128, 128, 128, 32, 64, 128, 64, 64, 128, 256, 128, 64, 128, 64, 128, 128, 64, 64, 32, 128, 128, 64, 32, 64, 128, 128, 128, 64, 128, 128, 128, 64, 64, 32, 64, 64, 64, 128, 32, 64, 64, 128, 64, 32, 128, 128, 128, 64, 64, 128, 128, 128, 64, 64, 128, 256, 64, 64, 128, 128, 128, 64, 64, 128, 64, 64, 128, 32, 64, 128, 64, 12
+8, 128, 128, 128, 128, 128, 128, 128, 32, 64, 64, 64, 128, 64, 128, 64, 64, 64, 256, 64, 128, 64, 128, 128, 128, 128, 64, 32, 64, 128, 128, 128, 128, 64, 128, 64, 256, 128, 32, 256, 32, 128, 128, 32, 128, 128, 128, 64, 128, 128, 256, 128, 64, 64, 128, 64, 64, 128, 32, 64, 128, 64, 64, 128, 128, 64, 128, 128, 32, 128, 128, 128, 256, 64, 128, 64, 64, 128, 128, 64, 128, 128, 32, 128, 32, 64, 64, 128, 64, 32, 128, 128, 32, 64, 64, 64, 64, 128, 128, 256, 64, 64, 64, 64, 128, 64, 256, 128, 128, 64, 256, 128, 64, 128, 64, 128, 64, 128, 64, 128, 64, 128, 64, 256, 64, 64, 64, 256, 64, 256, 64, 64, 64, 128, 128, 64, 64, 128, 128, 128, 128, 32, 32, 64, 64, 64, 128, 128, 128, 64, 128, 64, 32, 128, 128, 32, 16, 128, 64, 256, 64, 64, 128, 32, 128, 128, 64, 128, 128, 128, 128, 64, 64, 64, 64, 64, 64, 128, 64, 64, 128, 32, 64, 64, 128, 128, 256, 64, 128, 128, 64, 128, 128, 64, 32, 128, 32, 128, 64, 64, 64, 128, 128, 128, 128, 64, 128 ], "moves": [ 124, 195, 85, 148, 157, 163, 119, 161, 119, 163, 222, 98, 113, 142, 179, 108
+, 133, 137, 123, 165, 91, 138, 90, 145, 143, 81, 285, 249, 107, 194, 224, 81, 78, 169, 308, 98, 177, 121, 242, 137, 170, 140, 124, 160, 165, 122, 119, 108, 243, 167, 106, 186, 156, 131, 74, 143, 120, 136, 234, 203, 172, 195, 164, 100, 164, 81, 111, 89, 199, 179, 188, 169, 172, 114, 158, 147, 184, 194, 161, 181, 166, 156, 86, 193, 107, 242, 324, 120, 166, 157, 71, 153, 156, 118, 118, 131, 175, 129, 103, 138, 276, 81, 149, 153, 257, 175, 108, 95, 125, 166, 241, 104, 84, 136, 133, 92, 174, 286, 149, 132, 207, 167, 136, 80, 148, 169, 164, 149, 120, 101, 155, 153, 118, 118, 169, 104, 101, 111, 157, 101, 206, 155, 110, 101, 172, 97, 166, 179, 150, 63, 153, 67, 212, 132, 72, 207, 193, 108, 99, 151, 94, 96, 161, 133, 123, 125, 166, 58, 177, 110, 212, 151, 208, 94, 163, 135, 249, 179, 158, 105, 136, 104, 144, 94, 69, 154, 154, 169, 183, 281, 89, 278, 101, 171, 145, 226, 119, 120, 146, 154, 160, 91, 183, 133, 130, 203, 260, 161, 120, 126, 175, 204, 118, 177, 148, 90, 105, 157, 103, 103, 105, 106, 145, 168, 161, 67, 8
+8, 135, 167, 164, 130, 94, 93, 162, 115, 95, 251, 102, 127, 93, 143, 86, 86, 115, 171, 103, 142, 110, 117, 98, 145, 171, 88, 93, 94, 233, 168, 216, 224, 150, 183, 179, 112, 124, 140, 141, 101, 142, 85, 188, 142, 191, 101, 97, 110, 161, 93, 104, 140, 101, 175, 168, 114, 182, 108, 136, 147, 114, 179, 163, 111, 138, 69, 183, 122, 109, 162, 103, 75, 122, 223, 245, 214, 122, 121, 112, 131, 236, 155, 72, 105, 134, 140, 94, 117, 96, 159, 130, 103, 88, 158, 94, 153, 207, 93, 107, 125, 155, 140, 119, 97, 116, 72, 157, 167, 176, 116, 135, 167, 158, 153, 153, 136, 182, 114, 88, 169, 139, 105, 273, 237, 199, 173, 159, 131, 154, 180, 168, 189, 148, 181, 105, 99, 246, 147, 55, 149, 162, 236, 125, 286, 181, 113, 118, 157, 81, 114, 177, 47, 99, 81, 131, 173, 118, 83, 180, 156, 141, 246, 90, 100, 185, 172, 110, 107, 224, 199, 147, 191, 150, 92, 185, 108, 142, 96, 161, 111, 94, 100, 178, 139, 95, 120, 133, 99, 77, 170, 181, 121, 144, 84, 131, 101, 98, 81, 266, 163, 177, 223, 159, 91, 228, 223, 163, 157, 114, 141, 257, 201, 1
+68, 233, 164, 97, 196, 173, 204, 106, 223, 132, 126, 87, 125, 113, 212, 125, 125, 209, 191, 170, 121, 132, 234, 149, 95, 107, 108, 159, 106, 291, 149, 144, 60, 76, 128, 190, 100, 85, 160, 77, 117, 185, 293, 221, 170, 118, 140, 126, 109, 198, 207, 62, 115, 172, 148, 145, 197, 62, 112, 129, 132, 129, 123, 168, 173, 81, 146, 127, 107, 175, 150, 162, 66, 108, 115, 122, 97, 91, 152, 101, 168, 150, 93, 170, 69, 159, 154, 199, 114, 123, 122, 87, 200, 168, 156, 140, 102, 73, 144, 181, 136, 155, 204, 135, 55, 76, 156, 155, 97, 149, 129, 144, 79, 148, 124, 244, 153, 174, 145, 236, 95, 83, 89, 106, 206, 148, 93, 140, 89, 221, 107, 110, 229, 106, 104, 174, 234, 126, 92, 94, 97, 59, 145, 166, 145, 149, 158, 79, 107, 170, 134, 111, 166, 85, 116, 168, 107, 125, 185, 100, 109, 136, 55, 168, 121, 122, 196, 111, 195, 144, 169, 147, 181, 128, 168, 168, 272, 98, 146, 105, 96, 199, 158, 132, 100, 157, 98, 95, 85, 99, 101, 351, 179, 194, 229, 188, 151, 190, 73, 70, 112, 195, 133, 119, 151, 77, 167, 78, 180, 165, 107, 91, 220, 10
+6, 104, 147, 97, 163, 150, 154, 108, 93, 153, 150, 184, 192, 89, 75, 96, 151, 127, 180, 61, 89, 122, 60, 120, 198, 110, 86, 147, 138, 121, 179, 98, 165, 81, 153, 153, 79, 131, 81, 77, 73, 127, 143, 113, 63, 165, 160, 81, 198, 211, 127, 172, 131, 211, 91, 106, 72, 121, 84, 155, 86, 138, 127, 101, 169, 91, 171, 124, 147, 134, 136, 201, 149, 62, 95, 147, 102, 108, 124, 254, 150, 121, 115, 109, 127, 156, 88, 138, 61, 128, 165, 105, 65, 101, 124, 183, 160, 101, 148, 187, 138, 99, 118, 88, 112, 113, 153, 203, 84, 113, 102, 136, 99, 76, 144, 128, 195, 138, 102, 139, 202, 173, 120, 98, 200, 283, 123, 130, 116, 159, 134, 107, 81, 111, 107, 106, 196, 65, 132, 193, 128, 164, 154, 151, 154, 146, 118, 109, 126, 78, 107, 124, 85, 184, 98, 153, 99, 140, 100, 233, 120, 181, 119, 194, 151, 172, 176, 98, 67, 91, 165, 202, 152, 155, 104, 128, 156, 288, 135, 64, 198, 60, 173, 208, 74, 196, 119, 130, 98, 146, 255, 249, 142, 123, 133, 184, 109, 76, 177, 64, 93, 120, 113, 84, 204, 153, 119, 150, 173, 85, 176, 140, 113, 265, 112,
+153, 165, 131, 118, 156, 155, 191, 149, 79, 172, 79, 101, 100, 157, 87, 92, 123, 150, 84, 135, 90, 164, 100, 161, 185, 256, 133, 131, 116, 76, 123, 120, 216, 179, 156, 126, 293, 182, 128, 157, 82, 145, 106, 172, 136, 162, 87, 150, 121, 211, 91, 123, 99, 245, 107, 218, 129, 127, 116, 176, 146, 111, 112, 180, 145, 166, 170, 60, 72, 109, 106, 111, 156, 121, 166, 124, 135, 113, 49, 121, 169, 80, 47, 130, 134, 179, 124, 114, 131, 86, 171, 162, 95, 133, 143, 137, 186, 122, 90, 91, 104, 77, 107, 135, 155, 111, 170, 88, 130, 98, 167, 170, 263, 124, 149, 156, 125, 153, 178, 108, 81, 158, 67, 140, 123, 94, 108, 153, 203, 162, 181, 76, 204 ] }'
+mydf <- fromJSON(json)
+mydf
+mydf$score
+library(ggplot2)
+Ks <- c("2", "3", "4", "5", "6", "7", "8", "9", "10"); #
+#
+# Data collection and aggregation#
+dta = data.frame()#
+for(a in Ks){#
+	data1 = read.csv(paste(a, ".csv", sep=""),header=TRUE)#
+    data1$k = a#
+    dta = rbind(dta, data1)#
+}#
+dta$k = factor(dta$k, levels=Ks)#
+#
+p <- ggplot(aes_string(x="f1.x.", y="f2.x.", color="k"), data=dta) + geom_point() + ggtitle("Tuning parameter k on bi-objective problem ZDT3") + xlim(0, 1) + ylim(-1, 1) +  xlab("function objective f1(x)") + ylab("function objective f2(x)")
+p
+Ks <- c("2", "3", "4", "5", "6", "7", "8", "9", "10", "pf"); #
+#
+# Data collection and aggregation#
+dta = data.frame()#
+for(a in Ks){#
+	data1 = read.csv(paste(a, ".csv", sep=""),header=TRUE)#
+    data1$k = a#
+    dta = rbind(dta, data1)#
+}#
+dta$k = factor(dta$k, levels=Ks)#
+#
+p <- ggplot(aes_string(x="f1.x.", y="f2.x.", color="k"), data=dta) + geom_point() + ggtitle("Tuning parameter k on bi-objective problem ZDT3") + xlim(0, 1) + ylim(-1, 1) +  xlab("function objective f1(x)") + ylab("function objective f2(x)")
+p
+p
